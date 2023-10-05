@@ -10,12 +10,13 @@ from fileoperations import *
 ## This class implements an interactive shell to navigate the file system
 
 class FSShell():
-    def __init__(self, RawBlocks, FileOperationsObject):
+    def __init__(self, RawBlocks, FileOperationsObject, AbsolutePathNameObject):
         # cwd stored the inode of the current working directory
         # we start in the root directory
         self.cwd = 0
         self.FileOperationsObject = FileOperationsObject
         self.RawBlocks = RawBlocks
+        self.AbsolutePathNameObject = AbsolutePathNameObject
 
     # block-layer inspection, load/save, and debugging shell commands
     # implements showfsconfig (log fs config contents)
@@ -245,6 +246,12 @@ class FSShell():
             return -1
         return 0
 
+    def lnh (self, targetLink, linkName):
+        error, code = self.AbsolutePathNameObject.Link(targetLink, linkName, self.cwd)
+        if error == -1:
+            print("Error: " + code + "\n")
+            return -1
+        return 0
 
     ## Main interpreter loop
     def Interpreter(self):
@@ -325,9 +332,12 @@ class FSShell():
                     print("Error: rm requires one argument")
                 else:
                     self.rm(splitcmd[1])
+            elif splitcmd[0] == "lnh":
+                if len(splitcmd) != 3: # modify to add actual argument count
+                    print('Error: lnh requires 3 arguments')
+                else:
+                    self.lnh(splitcmd[1], splitcmd[2])
             elif splitcmd[0] == "exit":
                 return
             else:
                 print ("command " + splitcmd[0] + " not valid.\n")
-
-

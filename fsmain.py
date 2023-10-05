@@ -6,6 +6,7 @@ from block import *
 from shell import *
 from filename import *
 from fileoperations import *
+from absolutepath import *
 
 
 import os.path
@@ -53,7 +54,10 @@ if __name__ == "__main__":
     # Create a FileOperations object
     FileOperationsObject = FileOperations(FileObject)
 
+    # Create a AbsolutePathName object 
+    AbsolutePathNameObject = AbsolutePathName(FileObject)
+
     # Run the interactive shell interpreter
-    myshell = FSShell(RawBlocks, FileOperationsObject)
+    myshell = FSShell(RawBlocks, FileOperationsObject, AbsolutePathNameObject)
     myshell.Interpreter()
 
