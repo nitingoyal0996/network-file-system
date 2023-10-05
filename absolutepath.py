@@ -58,8 +58,6 @@ class AbsolutePathName():
       logging.debug("ERROR_LINK_NOT_DIRECTORY " + str(cwd))
       return -1, "ERROR_LINK_NOT_DIRECTORY"
 
-    print(cwd)
-
     # Find available slot in directory data block
     linkentry_position = self.FileNameObject.FindAvailableFileEntry(cwd)
     if linkentry_position == -1:
