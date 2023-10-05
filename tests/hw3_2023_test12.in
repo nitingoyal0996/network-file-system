@@ -1,0 +1,14 @@
+create f1
+append f1 THIS_IS_F1
+lns f1 f2
+cat f1
+cat f2
+rm f2
+mkdir dir1
+cd dir1
+mkdir dir2
+cd dir2
+lns ../../f1 f3
+ls
+cat f3
+exit

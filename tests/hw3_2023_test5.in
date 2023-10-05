@@ -1,0 +1,12 @@
+create f1
+append f1 THIS_IS_F1
+ls
+lnh f1 f2
+ls
+cat f1
+cat f2
+rm f2
+ls
+cat f2
+cat f1
+exit

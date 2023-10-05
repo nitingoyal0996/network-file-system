@@ -1,0 +1,18 @@
+create f1
+append f1 THIS_IS_F1
+lns f1 f2
+cat f1
+cat f2
+rm f1
+cat f2
+create f1
+append f1 NEW_F1
+cat f2
+lns f1 f3
+cat f3
+lns f1 f4
+cat f4
+append f4 _MORE
+lns f1 f5
+cat f5
+exit

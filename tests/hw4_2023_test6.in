@@ -1,0 +1,12 @@
+0:create f1
+1:ls
+1:append f1 1111111111
+1:cat f1
+0:cat f1
+0:append f1 aaaaaaaaaa
+1:cat f1
+0:create f2
+1:append f2 2222222222
+0:cat f2
+0:exit
+1:exit

@@ -1,0 +1,20 @@
+create f1
+append f1 MYTEST
+cat f1
+mirror f1
+cat f1
+mirror f1
+cat f1
+create f2
+append f2 12345678901234567890
+slice f2 3 8
+cat f2
+slice f2 10 15
+slice f2 0 10
+create f2
+create f3
+create f4
+ls
+rm f1
+ls
+exit

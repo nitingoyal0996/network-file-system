@@ -1,0 +1,16 @@
+mkdir dir1
+cd dir1
+mkdir dir2
+cd dir2
+mkdir dir3
+cd dir3
+create f1
+append f1 THIS_IS_F1
+ls
+cd /
+append /dir1/dir2/dir3/f1 _MORE
+mirror /dir1/dir2/dir3/f1
+slice /dir1/dir2/dir3/f1 0 4
+cd /dir1/dir2/dir3
+cat f1
+exit

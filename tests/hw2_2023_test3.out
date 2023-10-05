@@ -1,0 +1,33 @@
+#### File system information:
+Number of blocks          : 256
+Block size (Bytes)        : 128
+Number of inodes          : 16
+inode size (Bytes)        : 16
+inodes per block          : 8
+Free bitmap offset        : 2
+Free bitmap size (blocks) : 2
+Inode table offset        : 4
+Inode table size (blocks) : 2
+Max blocks per file       : 2
+Data blocks offset        : 6
+Data block size (blocks)  : 250
+Raw block layer layout: (B: boot, S: superblock, F: free bitmap, I: inode, D: data
+0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345
+BSFFIIDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+[cwd=0]%
+[cwd=0]%
+[cwd=0]%
+[cwd=0]%
+[cwd=0]%
+[5]:./
+[1]:f1
+[1]:f2
+[1]:f3
+[1]:f4
+[cwd=0]%
+[cwd=0]%
+[4]:./
+[1]:f2
+[1]:f3
+[1]:f4
+[cwd=0]%

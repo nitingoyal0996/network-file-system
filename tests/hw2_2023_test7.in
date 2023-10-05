@@ -1,0 +1,56 @@
+create f1
+create f2
+create f3
+create f4
+create f5
+create f6
+create f7
+create f8
+create f9
+create f10
+create f11
+create f12
+create f13
+create f14
+create f15
+create f16
+create f17
+create f18
+create f19
+create f20
+create f21
+create f22
+create f23
+create f24
+create f25
+ls
+rm f1
+ls
+rm f2
+rm f3
+rm f4
+rm f5
+rm f6
+rm f7
+rm f8
+rm f9
+rm f10
+ls
+rm f11
+rm f12
+rm f13
+rm f14
+rm f15
+rm f16
+rm f17
+rm f18
+rm f19
+rm f20
+rm f21
+rm f22
+rm f23
+rm f24
+ls
+rm f25
+ls
+exit

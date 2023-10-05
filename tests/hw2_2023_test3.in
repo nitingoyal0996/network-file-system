@@ -1,0 +1,8 @@
+create f1
+create f2
+create f3
+create f4
+ls
+rm f1
+ls
+exit

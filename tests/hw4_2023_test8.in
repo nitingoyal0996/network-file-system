@@ -1,0 +1,26 @@
+0:create f1
+1:ls
+1:append f1 1111111111
+1:cat f1
+0:cat f1
+0:append f1 aaaaaaaaaa
+1:cat f1
+0:create f2
+1:append f2 2222222222
+0:lnh f2 f2h
+1:cat f2h
+1:lns f2 f2s
+0:cat f2s
+1:mkdir d1
+0:cd d1
+1:cd d1
+0:create f3
+1:append f3 1234567890
+0:cat f3
+0:mirror f3
+1:cat f3
+0:ls
+1:rm f3
+1:ls
+0:exit
+1:exit

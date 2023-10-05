@@ -1,0 +1,29 @@
+create f1
+append f1 THIS_IS_F1
+ls
+lnh f1 f2
+ls
+cat f1
+cat f2
+ls
+mkdir dir1
+cd dir1
+lnh /f1 f3
+ls
+cat f3
+cd ..
+rm f1
+append f2 _MORE
+rm f2
+cd dir1
+ls
+cat f3
+mkdir dir2
+cd dir2
+lnh ../f3 f4
+lnh f4 f5
+lnh f5 f6
+lnh f5 f7
+ls
+cat f7
+exit
