@@ -42,6 +42,23 @@ class AbsolutePathName():
       return self.PathToInodeNumber(cut_path,0)
     else:
       return self.PathToInodeNumber(path,cwd)
+    
+  def PathNameToInodeNumber(self, name, cwd):
+    logging.debug("AbsolutePathName:: PathNameToInodeNumber: pathname: " + str (name))
+    inode_number = self.GeneralPathToInodeNumber(name, cwd)
+    inobj = InodeNumber(inode_number)
+    inobj.InodeNumberToInode(self.FileNameObject.RawBlocks)
+    if inobj.inode.type == fsconfig.INODE_TYPE_SYM:
+      # get path from the inobj blocknumbers.
+      file_path = ""
+      # print('>> block array: ', inobj.inode.block_numbers)
+      for b in inobj.inode.block_numbers:
+        file_path += self.FileNameObject.RawBlocks.Get(b).decode()
+        # print('>> file_path: ', file_path)
+      inode_number = self.GeneralPathToInodeNumber(file_path, cwd)
+    logging.debug("AbsolutePathName:: PathNameToInodeNumber: return inode_number: " + str(inode_number))
+    return inode_number
+
 
   def Link(self, target, name, cwd):
 

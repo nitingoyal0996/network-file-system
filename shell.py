@@ -106,7 +106,7 @@ class FSShell():
     # file operations
     # implements cd (change directory)
     def cd(self, dir):
-        i = self.AbsolutePathNameObject.GeneralPathToInodeNumber(dir, self.cwd)
+        i = self.AbsolutePathNameObject.PathNameToInodeNumber(dir, self.cwd)
         if i == -1:
             print("Error: not found\n")
             return -1
@@ -161,7 +161,9 @@ class FSShell():
 
     # implements cat (print file contents)
     def cat(self, filename):
-        i = self.AbsolutePathNameObject.GeneralPathToInodeNumber(filename, self.cwd)
+        # print('>> cat called: ', filename, self.cwd)
+        i = self.AbsolutePathNameObject.PathNameToInodeNumber(filename, self.cwd)
+        # print('>> inode number: ', i, self.cwd)
         if i == -1:
             print("Error: not found\n")
             return -1
@@ -195,7 +197,7 @@ class FSShell():
 
     # implements append
     def append(self, filename, string):
-        i = self.AbsolutePathNameObject.GeneralPathToInodeNumber(filename, self.cwd)
+        i = self.AbsolutePathNameObject.PathNameToInodeNumber(filename, self.cwd)
         if i == -1:
             print("Error: not found\n")
             return -1
@@ -223,7 +225,7 @@ class FSShell():
         except ValueError:
             print('Error: ' + count + ' not a valid Integer')
             return -1
-        i = self.AbsolutePathNameObject.GeneralPathToInodeNumber(filename, self.cwd)
+        i = self.AbsolutePathNameObject.PathNameToInodeNumber(filename, self.cwd)
         if i == -1:
             print("Error: not found\n")
             return -1
@@ -240,7 +242,7 @@ class FSShell():
 
     # implements mirror filename (mirror the contents of a file)
     def mirror(self, filename):
-        i = self.AbsolutePathNameObject.GeneralPathToInodeNumber(filename, self.cwd)
+        i = self.AbsolutePathNameObject.PathNameToInodeNumber(filename, self.cwd)
         if i == -1:
             print("Error: not found\n")
             return -1
