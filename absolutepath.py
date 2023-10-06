@@ -77,7 +77,7 @@ class AbsolutePathName():
   def Link(self, target, name, cwd):
 
     #  validate whether the file exist - 
-    target_inode_number = self.GeneralPathToInodeNumber(target, cwd)
+    target_inode_number = self.PathNameToInodeNumber(target, cwd)
     if target_inode_number == -1:
       logging.debug("ERROR_LINK_TARGET_DOESNOT_EXIST " + str(target))
       return -1, "ERROR_LINK_TARGET_DOESNOT_EXIST"
@@ -115,6 +115,10 @@ class AbsolutePathName():
     # Increase Reference count for the source file Inode by one
     target_inode.inode.refcnt = target_inode.inode.refcnt + 1
     target_inode.StoreInode(self.FileNameObject.RawBlocks)
+
+    # Increase reference count for the cwd by one
+    cwd_inode.inode.refcnt = cwd_inode.inode.refcnt + 1
+    cwd_inode.StoreInode(self.FileNameObject.RawBlocks)
 
     return 0, 'SUCCESS'
 
