@@ -226,8 +226,8 @@ class AbsolutePathName():
     # Insert file name information from source file inode to available entry
     self.FileNameObject.InsertFilenameInodeNumber(cwd_inode, name, new_inode.inode_number)
 
-    # update target inode information
-    target_inode.inode.refcnt = target_inode.inode.refcnt + 1
-    target_inode.StoreInode(self.FileNameObject.RawBlocks)
+    # increment cwd reference count 
+    cwd_inode.inode.refcnt = cwd_inode.inode.refcnt + 1
+    cwd_inode.StoreInode(self.FileNameObject.RawBlocks)
 
     return 0, 'SUCCESS'
