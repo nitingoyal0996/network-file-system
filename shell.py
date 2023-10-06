@@ -37,7 +37,6 @@ class FSShell():
             return -1
         inobj = InodeNumber(i)
         inobj.InodeNumberToInode(self.RawBlocks)
-        # print('>> inode.number: ' + str(i) + ' inobj2.type: ', str(inobj.inode.type))
         inode = inobj.inode
         inode.Print()
         return 0
@@ -122,34 +121,27 @@ class FSShell():
         inobj = InodeNumber(self.cwd)
         inobj.InodeNumberToInode(self.RawBlocks)
         block_index = 0
-        # print('>> block_index: ' + str(block_index))
         while block_index <= (inobj.inode.size // fsconfig.BLOCK_SIZE):
             block = self.RawBlocks.Get(inobj.inode.block_numbers[block_index])
-            # print('>> block: ' + str(block))
             if block_index == (inobj.inode.size // fsconfig.BLOCK_SIZE):
                 end_position = inobj.inode.size % fsconfig.BLOCK_SIZE
             else:
                 end_position = fsconfig.BLOCK_SIZE
-            # print('>> end_position: ' + str(end_position))
             current_position = 0
             while current_position < end_position:
                 entryname = block[current_position:current_position + fsconfig.MAX_FILENAME]
                 entryinode = block[current_position + fsconfig.MAX_FILENAME:current_position + fsconfig.FILE_NAME_DIRENTRY_SIZE]
                 end_position
                 entryinodenumber = int.from_bytes(entryinode, byteorder='big')
-                # print('>> entryname: ' + str(entryname) + '\n>> entryinode: ' + str(entryinode) + '\n>> entryinodenumber: ' + str(entryinodenumber))
                 inobj2 = InodeNumber(entryinodenumber)
                 inobj2.InodeNumberToInode(self.RawBlocks)
-                # print('>> inobj2.type: ', str(inobj2.inode.type))
                 if inobj2.inode.type == fsconfig.INODE_TYPE_DIR:
                     print("[" + str(inobj2.inode.refcnt) + "]:" + entryname.decode() + "/")
                 elif inobj2.inode.type == fsconfig.INODE_TYPE_SYM:
                     blocks = inobj2.inode.block_numbers
-                    # print('>> symlink inode: ', block_inobj)
                     file_path = ""
                     count = 0
                     while (count < len(blocks)):
-                        # print(">> file_path: ", file_path)
                         file_path += self.RawBlocks.Get(blocks[count]).decode()
                         count+=1
                     print("[" + str(inobj2.inode.refcnt) + "]:" + entryname.decode() + "@ -> " + file_path)
@@ -161,9 +153,7 @@ class FSShell():
 
     # implements cat (print file contents)
     def cat(self, filename):
-        # print('>> cat called: ', filename, self.cwd)
         i = self.AbsolutePathNameObject.PathNameToInodeNumber(filename, self.cwd)
-        # print('>> inode number: ', i, self.cwd)
         if i == -1:
             print("Error: not found\n")
             return -1

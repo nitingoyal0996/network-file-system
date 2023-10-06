@@ -52,10 +52,8 @@ class AbsolutePathName():
       # get path from the inobj blocknumbers.
       file_path = ""
       read_bytes = 0
-      # print('>> block array: ', inobj.inode.block_numbers)
       for b in inobj.inode.block_numbers:
         file_path_raw = self.FileNameObject.RawBlocks.Get(b)
-        # file_path += file_path_raw.decode()
         file_size = inobj.inode.size
         logging.debug('AbsolutePathName:: PathNameToInodeNumber:: File Size: ' + str(file_size) + "XXXXXXXXXXXX")
         logging.debug('AbsolutePathName:: PathNameToInodeNumber:: Read Raw File Path: ' + str(file_path_raw) + "XXXXXXXXXXXX")
@@ -68,7 +66,6 @@ class AbsolutePathName():
           file_path += file_path_raw.decode()
           read_bytes += fsconfig.BLOCK_SIZE
         logging.debug('AbsolutePathName:: PathNameToInodeNumber:: Read Raw File Decoded: ' + str(file_path.strip())+ "XXXXXXXXXXXX")
-        # print('>> file_path: ', file_path)
       inode_number = self.GeneralPathToInodeNumber(file_path, cwd)
     logging.debug("AbsolutePathName:: PathNameToInodeNumber: return inode_number: " + str(inode_number))
     return inode_number
@@ -123,8 +120,6 @@ class AbsolutePathName():
     return 0, 'SUCCESS'
 
   def Symlink (self, target, name, cwd):
-    # print(">>>> run symlink")
-
     # ensure we have a valid target 
     target_inode_number = self.GeneralPathToInodeNumber(target, cwd)
     if target_inode_number == -1:
@@ -150,7 +145,6 @@ class AbsolutePathName():
       logging.debug('ERROR_SYMLINK_ALREADY_EXISTS' + str(target))
       return -1, "ERROR_SYMLINK_ALREADY_EXISTS"
     
-    # ERROR_SYMLINK_INODE_NOT_AVAILABLE
     # Find if there is an available inode
     inode_position = self.FileNameObject.FindAvailableInode()
     if inode_position == -1:
