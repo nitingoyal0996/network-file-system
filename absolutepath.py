@@ -51,9 +51,23 @@ class AbsolutePathName():
     if inobj.inode.type == fsconfig.INODE_TYPE_SYM:
       # get path from the inobj blocknumbers.
       file_path = ""
+      read_bytes = 0
       # print('>> block array: ', inobj.inode.block_numbers)
       for b in inobj.inode.block_numbers:
-        file_path += self.FileNameObject.RawBlocks.Get(b).decode()
+        file_path_raw = self.FileNameObject.RawBlocks.Get(b)
+        # file_path += file_path_raw.decode()
+        file_size = inobj.inode.size
+        logging.debug('AbsolutePathName:: PathNameToInodeNumber:: File Size: ' + str(file_size) + "XXXXXXXXXXXX")
+        logging.debug('AbsolutePathName:: PathNameToInodeNumber:: Read Raw File Path: ' + str(file_path_raw) + "XXXXXXXXXXXX")
+        # if filesize is less than a block's size, read the file size
+        if (file_size < fsconfig.BLOCK_SIZE):
+          file_path += file_path_raw[0: file_size].decode()
+          read_bytes += file_size
+        else:
+          # otherwise read the block size
+          file_path += file_path_raw.decode()
+          read_bytes += fsconfig.BLOCK_SIZE
+        logging.debug('AbsolutePathName:: PathNameToInodeNumber:: Read Raw File Decoded: ' + str(file_path.strip())+ "XXXXXXXXXXXX")
         # print('>> file_path: ', file_path)
       inode_number = self.GeneralPathToInodeNumber(file_path, cwd)
     logging.debug("AbsolutePathName:: PathNameToInodeNumber: return inode_number: " + str(inode_number))
@@ -153,7 +167,6 @@ class AbsolutePathName():
     new_inode.inode.type = fsconfig.INODE_TYPE_SYM
     new_inode.inode.refcnt = 1
 
-    num_of_blocks_required = len(file_path_byte_array) // fsconfig.BLOCK_SIZE;
     # print('num of blocks required: ', num_of_blocks_required)
 
     bytes_written = 0
@@ -191,6 +204,7 @@ class AbsolutePathName():
         # load existing block data from the disk
         block = self.FileNameObject.RawBlocks.Get(block_number)
         # copy slice of data into the right position in this block
+        logging.debug('AbsolutePathName:: Create Symlink: Write Data: '+ str(data.decode()) + ", "+ str(data))
         block[write_start:write_end] = data[bytes_written:bytes_written + (write_end - write_start)]
         # write modified block back to disk
         self.FileNameObject.RawBlocks.Put(block_number, block)
@@ -202,7 +216,7 @@ class AbsolutePathName():
             bytes_written) + ' , len(data): ' + str(len(data)))
 
     # save symlink inode information
-    new_inode.size = inode_offset + bytes_written
+    new_inode.inode.size = inode_offset + bytes_written
     new_inode.StoreInode(self.FileNameObject.RawBlocks)
 
     # Insert file name information from source file inode to available entry
