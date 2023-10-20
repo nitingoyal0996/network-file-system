@@ -28,9 +28,6 @@ class DiskBlocks():
         server_url = 'http://' + fsconfig.SERVER_ADDRESS + ':' + str(PORT)
         self.block_server = xmlrpc.client.ServerProxy(server_url, use_builtin_types=True)
         socket.setdefaulttimeout(fsconfig.SOCKET_TIMEOUT)
-        # Testing acquire and release - Remove later
-        # self.Acquire()
-        # self.Release()
 
     ## Put: interface to write a raw block of data to the block indexed by block number
     ## Blocks are padded with zeroes up to BLOCK_SIZE
@@ -64,9 +61,9 @@ class DiskBlocks():
                 #         # set current client id
                 #         self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
                 
-                self.cache[block_number] = putdata
                 # logging.info(">>> Cache updated: " + str(self.cache.keys()))
                 logging.info("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
+                self.cache[block_number] = putdata
 
                 if ret == -1:
                     logging.error('Put: Server returns error')
@@ -98,7 +95,7 @@ class DiskBlocks():
                 ### Caching ###
                 if (block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2) and (block_number in self.cache.keys()):
                     logging.info("CACHE_HIT {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
-                    block_data = self.cache[block_number]
+                    return self.cache[block_number]
                 
                 if block_number not in self.cache.keys():
                     logging.info("CACHE_MISS {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
