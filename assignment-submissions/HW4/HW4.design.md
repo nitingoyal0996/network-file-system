@@ -63,7 +63,8 @@ def __init__():
 
 1. pull the latest RSM & CID blocks from the server
 2. check if any other client has written on the server
-3. if yes - invalidate => reset the cached block data to NONE (how?) and log `CACHE_INVALIDATED`
+3. if yes - invalidate => reset the cached block data `cache = {}` and log `CACHE_INVALIDATED`
+4. set new client id on server.
 
 ### Refactor `Get (), Put (), RSM ()` ###
 

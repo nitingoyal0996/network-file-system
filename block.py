@@ -31,7 +31,6 @@ class DiskBlocks():
         # Testing acquire and release - Remove later
         # self.Acquire()
         # self.Release()
-        self.CheckAndInvalidateCache()
 
     ## Put: interface to write a raw block of data to the block indexed by block number
     ## Blocks are padded with zeroes up to BLOCK_SIZE
@@ -58,8 +57,12 @@ class DiskBlocks():
 
                 ### Caching ### 
                 # we don't cache the last block and the second last block
-                if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2:
-                    self.CheckAndInvalidateCache()
+                # if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2:
+                    # logging.info('>>> Check and Invalidate Cache: ' + str(block_number))
+                    # invalid_cache = self.CheckAndInvalidateCache()
+                    # if invalid_cache:
+                    #     # set current client id
+                    #     self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
                 
                 self.cache[block_number] = putdata
                 # logging.info(">>> Cache updated: " + str(self.cache.keys()))
@@ -160,51 +163,35 @@ class DiskBlocks():
         finally:
             file.close()
 
-    def RSM(self):
+    def RSM(self, block_number):
         try:
-            print(">>> RSM: client called for block number " + str(fsconfig.TOTAL_NUM_BLOCKS - 1))
-            # Last block is considered as the RSM block
-            ret = self.block_server.RSM()
+            ret = self.block_server.RSM(block_number)
             if ret == -1:
                 logging.error('RSM: Server returns error')
                 quit()
         except TimeoutError:
             logging.error('SERVER_TIMED_OUT')
-            # at-least-once semantic
-            ret = self.RSM(fsconfig.TOTAL_NUM_BLOCKS - 1)
+            ret = self.RSM(block_number)
         return ret
         
-    # page number 243
     def Acquire(self):
-        print(">>> Acquire: RSM block value before acquire " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 1)))
-        R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)  # read and set lock L
-        while True:  # was it ready locked?
+        R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)  # read and set RSM block
+        while True: 
             if R1 is not fsconfig.RSM_LOCKED: 
                 break
-            R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)  # yes, do it again, till we see it wasn't
-        # print the rsm block value
-        print(">>> Acquire: RSM block value after acquire " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 1)))
+            R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)
         return R1
 
     def Release (self):
-        print(">>> Release: RSM block value before release " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 1)))
         self.Put (fsconfig.TOTAL_NUM_BLOCKS - 1, fsconfig.RSM_UNLOCKED)
-        # print the rsm block value
-        print(">>> Release: RSM block value after release " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 1)))
 
     def CheckAndInvalidateCache(self):
-        # get the client id from the second last server block
         client_id = self.Get(fsconfig.TOTAL_NUM_BLOCKS - 2)
-        # print(">>> CheckAndInvalidateCache: Client id from second last block " + str(client_id[0]) + " " + str(fsconfig.CID))
-        # if the client id is same as the config value, then it is a cache hit
+        # if the client id is different, then we invalidate the cache
         if client_id[0] != fsconfig.CID:
-            # if the client id is different, then we invalidate the cache
             self.cache = {}
-            # set current client id
-            self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
             logging.info("CACHE_INVALIDATED")
             return True
-        # print("Second last block information before checking cache " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 2)))
         return False
         
     def PrintBlocks(self,tag,min,max):
