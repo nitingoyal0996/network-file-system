@@ -1,4 +1,4 @@
-## What to turn in on Canvas ##
+# What to turn in on Canvas #
 
 Summary and checklist:
 All students:
@@ -9,7 +9,9 @@ All students:
 - You must implement a block cache (see below) and CheckAndInvalidateCache() in block.py
 - You must ensure your block cache design prints out CACHE_HIT, CACHE_MISS, CACHE_WRITE_THROUGH, and CACHE_INVALIDATE as per below
 - You must test your code with the provided test environment and submit the test results
+
 EEL-5737 students only:
+
 - You must characterize the performance of the cache and describe your findings in the report
 
 *PLEASE MAKE SURE TO FOLLOW THE NAMING CONVENTION BELOW* - it significantly speeds up grading. You will be deducted points for using wrong file names.
@@ -103,20 +105,21 @@ You are given a modified version of the file system that implements a client/ser
 
 ## Assignment questions ##
 
-Q1) If you implement Acquire() and Release() correctly, multi-step operations run exclusively in one client at a time to enforce before-or-after atomicity. Suppose you didn't implement Acquire()/Release(). What is one example of a race condition that can happen without the lock? Simulate a race condition in the code (comment out the lock Acquire()/Release() in the cat and append functions, and place sleep statement(s) strategically) to verify, and describe how you did it.
+Q1. If you implement Acquire() and Release() correctly, multi-step operations run exclusively in one client at a time to enforce before-or-after atomicity. Suppose you didn't implement Acquire()/Release(). What is one example of a race condition that can happen without the lock? Simulate a race condition in the code (comment out the lock Acquire()/Release() in the cat and append functions, and place sleep statement(s) strategically) to verify, and describe how you did it.
 
-Q2) Describe, in your own words, what are the changes that were made to the Get() and Put() methods in the client, compared to the HW#3 version of the code?
+Q2. Describe, in your own words, what are the changes that were made to the Get() and Put() methods in the client, compared to the HW#3 version of the code?
 
-Q3) At-least-once semantics may at some point give up and return (e.g. perhaps the server is down forever). How would you implement this in the code (you don't need to actually implement; just describe in words)
+Q3. At-least-once semantics may at some point give up and return (e.g. perhaps the server is down forever). How would you implement this in the code (you don't need to actually implement; just describe in words)
 
-Q4) [EEL5737 students only] Discuss in what respects this implementation is similar to NFS, and in what respects it is fundamentally different from NFS
+Q4. [EEL5737 students only] Discuss in what respects this implementation is similar to NFS, and in what respects it is fundamentally different from NFS
 
-Q5) [EEL5737 students only] Evaluate the performance of the cache you implemented. Create three test benchmarks, describe the reasoning behind your tests, and evaluate: 1) the cache hit rate, and 2) the expected improvement in average latency due to the cache, assuming that the hit time is 1ms and the miss time is 100ms
+Q5. [EEL5737 students only] Evaluate the performance of the cache you implemented. Create three test benchmarks, describe the reasoning behind your tests, and evaluate: 1) the cache hit rate, and 2) the expected improvement in average latency due to the cache, assuming that the hit time is 1ms and the miss time is 100ms
 
-## Hints: ##
+## Hints ##
 
 - to deal with retries, use Python try/except clauses. In the example below, Python will try to run the [some action] code sequence. If the execution of [some action] raises [exception A] (e.g. a timeout), Python will run the code sequence [handle exception A]. Similarly, if a different[exception B] occurs, it will run the code sequence [handle exception B]
-    ```
+
+    ```python
     try:
         [some action]
     except [exception A]:
