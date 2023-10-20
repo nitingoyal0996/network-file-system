@@ -58,11 +58,11 @@ class DiskBlocks():
                 ### Caching ### 
                 # we don't cache the last block and the second last block
                 # if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2:
-                    # logging.info('>>> Check and Invalidate Cache: ' + str(block_number))
-                    # invalid_cache = self.CheckAndInvalidateCache()
-                    # if invalid_cache:
-                    #     # set current client id
-                    #     self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
+                #     # logging.info('>>> Check and Invalidate Cache: ' + str(block_number))
+                #     invalid_cache = self.CheckAndInvalidateCache()
+                #     if invalid_cache:
+                #         # set current client id
+                #         self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
                 
                 self.cache[block_number] = putdata
                 # logging.info(">>> Cache updated: " + str(self.cache.keys()))
@@ -110,7 +110,8 @@ class DiskBlocks():
                     quit()
                 block_data = bytearray(ret)
                 # read_through
-                self.cache[block_number] = block_data
+                if (block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2):
+                    self.cache[block_number] = block_data
                 
                 return block_data
 
@@ -175,6 +176,10 @@ class DiskBlocks():
         return ret
         
     def Acquire(self):
+        invalid_cache = self.CheckAndInvalidateCache()
+        if invalid_cache:
+            # set current client id
+            self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
         R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)  # read and set RSM block
         while True: 
             if R1 is not fsconfig.RSM_LOCKED: 
