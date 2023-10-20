@@ -8,6 +8,9 @@ import xmlrpc.client, socket, time
 
 class DiskBlocks():
     def __init__(self):
+        # initialize the block cache using python dictionary
+        self.block = {}
+        self.cache = {}
 
         # initialize clientID
         if fsconfig.CID >= 0 and fsconfig.CID < fsconfig.MAX_CLIENTS:
@@ -25,52 +28,96 @@ class DiskBlocks():
         server_url = 'http://' + fsconfig.SERVER_ADDRESS + ':' + str(PORT)
         self.block_server = xmlrpc.client.ServerProxy(server_url, use_builtin_types=True)
         socket.setdefaulttimeout(fsconfig.SOCKET_TIMEOUT)
+        # Testing acquire and release - Remove later
+        # self.Acquire()
+        # self.Release()
+        self.CheckAndInvalidateCache()
 
     ## Put: interface to write a raw block of data to the block indexed by block number
     ## Blocks are padded with zeroes up to BLOCK_SIZE
 
     def Put(self, block_number, block_data):
-
-        logging.debug(
-            'Put: block number ' + str(block_number) + ' len ' + str(len(block_data)) + '\n' + str(block_data.hex()))
-        if len(block_data) > fsconfig.BLOCK_SIZE:
-            logging.error('Put: Block larger than BLOCK_SIZE: ' + str(len(block_data)))
-            quit()
-
-        if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
-            # ljust does the padding with zeros
-            putdata = bytearray(block_data.ljust(fsconfig.BLOCK_SIZE, b'\x00'))
-            # Write block
-            # commenting this out as the request now goes to the server
-            # self.block[block_number] = putdata
-            # call Put() method on the server; code currently quits on any server failure
-            ret = self.block_server.Put(block_number, putdata)
-            if ret == -1:
-                logging.error('Put: Server returns error')
+        try:
+            logging.debug(
+                'Put: block number ' + str(block_number) + ' len ' + str(len(block_data)) + '\n' + str(block_data.hex()))
+            if len(block_data) > fsconfig.BLOCK_SIZE:
+                logging.error('Put: Block larger than BLOCK_SIZE: ' + str(len(block_data)))
                 quit()
-            return 0
-        else:
-            logging.error('Put: Block out of range: ' + str(block_number))
-            quit()
+
+            if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
+                # ljust does the padding with zeros
+                putdata = bytearray(block_data.ljust(fsconfig.BLOCK_SIZE, b'\x00'))
+                # Write block
+                # commenting this out as the request now goes to the server
+                # self.block[block_number] = putdata
+                # call Put() method on the server; code currently quits on any server failure
+                ret = self.block_server.Put(block_number, putdata)
+
+                # if block_number == fsconfig.TOTAL_NUM_BLOCKS - 2:
+                    # print(">>> Put: Updating cache on the client " + str(self.cache.keys()))
+
+                ### Caching ### 
+                # we don't cache the last block and the second last block
+                if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2:
+                    self.CheckAndInvalidateCache()
+                
+                self.cache[block_number] = putdata
+                # logging.info(">>> Cache updated: " + str(self.cache.keys()))
+                logging.info("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
+
+                if ret == -1:
+                    logging.error('Put: Server returns error')
+                    quit()
+                return 0
+            else:
+                logging.error('Put: Block out of range: ' + str(block_number))
+                quit()
+        except TimeoutError:
+            logging.error('SERVER_TIMED_OUT')
+            # retry the request
+            return self.Put(block_number, block_data)
 
 
     ## Get: interface to read a raw block of data from block indexed by block number
     ## Equivalent to the textbook's BLOCK_NUMBER_TO_BLOCK(b)
 
     def Get(self, block_number):
+        try:
+            logging.debug('Get: ' + str(block_number))
+            if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
+                block_data = []
+                # logging.debug ('\n' + str((self.block[block_number]).hex()))
+                # commenting this out as the request now goes to the server
+                # return self.block[block_number]
+                # call Get() method on the server
 
-        logging.debug('Get: ' + str(block_number))
-        if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
-            # logging.debug ('\n' + str((self.block[block_number]).hex()))
-            # commenting this out as the request now goes to the server
-            # return self.block[block_number]
-            # call Get() method on the server
-            data = self.block_server.Get(block_number)
-            # return as bytearray
-            return bytearray(data)
+                # logging.info(">>> caching: block_number: " + str(block_number) + " before cache: " + str(self.cache.keys()))
+                ### Caching ###
+                if (block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2) and (block_number in self.cache.keys()):
+                    logging.info("CACHE_HIT {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
+                    block_data = self.cache[block_number]
+                
+                if block_number not in self.cache.keys():
+                    logging.info("CACHE_MISS {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
+                    # # check and invalidate cache
+                    # self.CheckAndInvalidateCache()
+                ret = self.block_server.Get(block_number)
+                if ret == -1:
+                    logging.error('Get: Server returns error')
+                    quit()
+                block_data = bytearray(ret)
+                # read_through
+                self.cache[block_number] = block_data
+                
+                return block_data
 
-        logging.error('DiskBlocks::Get: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
-        quit()
+            logging.error('DiskBlocks::Get: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
+            quit()
+            
+        except TimeoutError:
+            logging.error('SERVER_TIMED_OUT')
+            # retry request
+            return self.Get(block_number)
 
 
     ## Serializes and saves the DiskBlocks block[] data structure to a "dump" file on your disk
@@ -113,9 +160,53 @@ class DiskBlocks():
         finally:
             file.close()
 
+    def RSM(self):
+        try:
+            print(">>> RSM: client called for block number " + str(fsconfig.TOTAL_NUM_BLOCKS - 1))
+            # Last block is considered as the RSM block
+            ret = self.block_server.RSM()
+            if ret == -1:
+                logging.error('RSM: Server returns error')
+                quit()
+        except TimeoutError:
+            logging.error('SERVER_TIMED_OUT')
+            # at-least-once semantic
+            ret = self.RSM(fsconfig.TOTAL_NUM_BLOCKS - 1)
+        return ret
+        
+    # page number 243
+    def Acquire(self):
+        print(">>> Acquire: RSM block value before acquire " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 1)))
+        R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)  # read and set lock L
+        while True:  # was it ready locked?
+            if R1 is not fsconfig.RSM_LOCKED: 
+                break
+            R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)  # yes, do it again, till we see it wasn't
+        # print the rsm block value
+        print(">>> Acquire: RSM block value after acquire " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 1)))
+        return R1
 
-## Prints to screen block contents, from min to max
+    def Release (self):
+        print(">>> Release: RSM block value before release " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 1)))
+        self.Put (fsconfig.TOTAL_NUM_BLOCKS - 1, fsconfig.RSM_UNLOCKED)
+        # print the rsm block value
+        print(">>> Release: RSM block value after release " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 1)))
 
+    def CheckAndInvalidateCache(self):
+        # get the client id from the second last server block
+        client_id = self.Get(fsconfig.TOTAL_NUM_BLOCKS - 2)
+        # print(">>> CheckAndInvalidateCache: Client id from second last block " + str(client_id[0]) + " " + str(fsconfig.CID))
+        # if the client id is same as the config value, then it is a cache hit
+        if client_id[0] != fsconfig.CID:
+            # if the client id is different, then we invalidate the cache
+            self.cache = {}
+            # set current client id
+            self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
+            logging.info("CACHE_INVALIDATED")
+            return True
+        # print("Second last block information before checking cache " + str(self.Get(fsconfig.TOTAL_NUM_BLOCKS - 2)))
+        return False
+        
     def PrintBlocks(self,tag,min,max):
         print ('#### Raw disk blocks: ' + tag)
         for i in range(min,max):
