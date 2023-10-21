@@ -43,25 +43,14 @@ class DiskBlocks():
             if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
                 # ljust does the padding with zeros
                 putdata = bytearray(block_data.ljust(fsconfig.BLOCK_SIZE, b'\x00'))
+                # set the current client id
+                self.block_server.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
                 # Write block
                 # commenting this out as the request now goes to the server
                 # self.block[block_number] = putdata
                 # call Put() method on the server; code currently quits on any server failure
                 ret = self.block_server.Put(block_number, putdata)
 
-                # if block_number == fsconfig.TOTAL_NUM_BLOCKS - 2:
-                    # print(">>> Put: Updating cache on the client " + str(self.cache.keys()))
-
-                ### Caching ### 
-                # we don't cache the last block and the second last block
-                # if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2:
-                #     # logging.info('>>> Check and Invalidate Cache: ' + str(block_number))
-                #     invalid_cache = self.CheckAndInvalidateCache()
-                #     if invalid_cache:
-                #         # set current client id
-                #         self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
-                
-                # logging.info(">>> Cache updated: " + str(self.cache.keys()))
                 logging.info("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
                 self.cache[block_number] = putdata
 
@@ -97,15 +86,14 @@ class DiskBlocks():
                     logging.info("CACHE_HIT {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
                     return self.cache[block_number]
                 
-                if block_number not in self.cache.keys():
+                if block_number not in self.cache.keys() or (block_number == fsconfig.TOTAL_NUM_BLOCKS - 1 or block_number == fsconfig.TOTAL_NUM_BLOCKS - 2):
                     logging.info("CACHE_MISS {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
-                    # # check and invalidate cache
-                    # self.CheckAndInvalidateCache()
-                ret = self.block_server.Get(block_number)
-                if ret == -1:
-                    logging.error('Get: Server returns error')
-                    quit()
-                block_data = bytearray(ret)
+                    ret = self.block_server.Get(block_number)
+                    if ret == -1:
+                        logging.error('Get: Server returns error')
+                        quit()
+                    block_data = bytearray(ret)
+                
                 # read_through
                 if (block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2):
                     self.cache[block_number] = block_data
@@ -191,7 +179,9 @@ class DiskBlocks():
         client_id = self.Get(fsconfig.TOTAL_NUM_BLOCKS - 2)
         # if the client id is different, then we invalidate the cache
         if client_id[0] != fsconfig.CID:
+            # invalidate the cache
             self.cache = {}
+            # log that the cache has been invalidated
             logging.info("CACHE_INVALIDATED")
             return True
         return False

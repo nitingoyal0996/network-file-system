@@ -26,6 +26,7 @@ class FSShell():
 
     # implements showinode (log inode i contents)
     def showinode(self, i):
+        self.RawBlocks.Acquire()
         try:
             i = int(i)
         except ValueError:
@@ -39,15 +40,18 @@ class FSShell():
         inobj.InodeNumberToInode(self.RawBlocks)
         inode = inobj.inode
         inode.Print()
+        self.RawBlocks.Release()
         return 0
 
     # implements load (load the specified dump file)
     def load(self, dumpfilename):
+        self.RawBlocks.Acquire()
         if not os.path.isfile(dumpfilename):
             print("Error: Please provide valid file")
             return -1
         self.RawBlocks.LoadFromDump(dumpfilename)
         self.cwd = 0
+        self.RawBlocks.Release()
         return 0
 
     # implements save (save the file system contents to specified dump file)
