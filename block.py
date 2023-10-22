@@ -43,20 +43,27 @@ class DiskBlocks():
             if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
                 # ljust does the padding with zeros
                 putdata = bytearray(block_data.ljust(fsconfig.BLOCK_SIZE, b'\x00'))
-                # set the current client id
-                self.block_server.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
                 # Write block
                 # commenting this out as the request now goes to the server
                 # self.block[block_number] = putdata
                 # call Put() method on the server; code currently quits on any server failure
                 ret = self.block_server.Put(block_number, putdata)
-
-                logging.info("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
-                self.cache[block_number] = putdata
-
                 if ret == -1:
                     logging.error('Put: Server returns error')
                     quit()
+
+                logging.info("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
+                self.cache[block_number] = putdata
+                
+                # TODO: REFACTOR: merge it with the rest of the method later
+                try:
+                    # set the current client id for the last updated block
+                    self.block_server.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
+                except TimeoutError: 
+                    logging.error('SERVER_TIMED_OUT')
+                    logging.info(">>>> Retrying request: " + str(fsconfig.TOTAL_NUM_BLOCKS - 2))
+                    self.block_server.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
+                
                 return 0
             else:
                 logging.error('Put: Block out of range: ' + str(block_number))
@@ -87,16 +94,15 @@ class DiskBlocks():
                     return self.cache[block_number]
                 
                 if block_number not in self.cache.keys() or (block_number == fsconfig.TOTAL_NUM_BLOCKS - 1 or block_number == fsconfig.TOTAL_NUM_BLOCKS - 2):
-                    logging.info("CACHE_MISS {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
                     ret = self.block_server.Get(block_number)
+                    logging.info("CACHE_MISS {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
                     if ret == -1:
                         logging.error('Get: Server returns error')
                         quit()
                     block_data = bytearray(ret)
                 
                 # read_through
-                if (block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2):
-                    self.cache[block_number] = block_data
+                self.cache[block_number] = block_data
                 
                 return block_data
 
@@ -164,7 +170,7 @@ class DiskBlocks():
         invalid_cache = self.CheckAndInvalidateCache()
         if invalid_cache:
             # set current client id
-            self.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
+            logging.info("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=fsconfig.TOTAL_NUM_BLOCKS - 2))
         R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)  # read and set RSM block
         while True: 
             if R1 is not fsconfig.RSM_LOCKED: 
