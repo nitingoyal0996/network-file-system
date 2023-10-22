@@ -25,6 +25,7 @@ class DiskBlocks():
   def Sleep(self):
     self.counter += 1
     if (self.counter % self.delayat) == 0:
+      # print('>>> Sleep: Counter ' +str(self.counter))
       time.sleep(10)
 
 if __name__ == "__main__":
@@ -72,6 +73,7 @@ if __name__ == "__main__":
 
   def Get(block_number):
     result = RawBlocks.block[block_number]
+    # print('>>> Get Before Sleep: ' + str(block_number) + ' ' + str(RawBlocks.counter))
     RawBlocks.Sleep()
     return result
 
@@ -79,6 +81,7 @@ if __name__ == "__main__":
 
   def Put(block_number, data):
     RawBlocks.block[block_number] = data.data
+    # print('>>> Put Before Sleep: ' + str(block_number) + ' ' + str(RawBlocks.counter))
     RawBlocks.Sleep()
     return 0
 
@@ -89,6 +92,7 @@ if __name__ == "__main__":
     result = RawBlocks.block[block_number]
     # RawBlocks.block[block_number] = RSM_LOCKED
     RawBlocks.block[block_number] = bytearray(RSM_LOCKED.ljust(BLOCK_SIZE,b'\x01'))
+    # print('>>> RSM Before Sleep: Counter ' +str(RawBlocks.counter))
     RawBlocks.Sleep()
     return result
 
