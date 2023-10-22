@@ -52,7 +52,7 @@ class DiskBlocks():
                     logging.error('Put: Server returns error')
                     quit()
 
-                logging.info("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
+                print("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
                 self.cache[block_number] = putdata
                 
                 # TODO: REFACTOR: merge it with the rest of the method later
@@ -60,8 +60,7 @@ class DiskBlocks():
                     # set the current client id for the last updated block
                     self.block_server.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
                 except TimeoutError: 
-                    logging.error('SERVER_TIMED_OUT')
-                    logging.info(">>>> Retrying request: " + str(fsconfig.TOTAL_NUM_BLOCKS - 2))
+                    print('SERVER_TIMED_OUT')
                     self.block_server.Put(fsconfig.TOTAL_NUM_BLOCKS - 2, bytearray([fsconfig.CID]))
                 
                 return 0
@@ -69,7 +68,7 @@ class DiskBlocks():
                 logging.error('Put: Block out of range: ' + str(block_number))
                 quit()
         except TimeoutError:
-            logging.error('SERVER_TIMED_OUT')
+            print('SERVER_TIMED_OUT')
             # retry the request
             return self.Put(block_number, block_data)
 
@@ -87,15 +86,14 @@ class DiskBlocks():
                 # return self.block[block_number]
                 # call Get() method on the server
 
-                # logging.info(">>> caching: block_number: " + str(block_number) + " before cache: " + str(self.cache.keys()))
                 ### Caching ###
                 if (block_number != fsconfig.TOTAL_NUM_BLOCKS - 1 and block_number != fsconfig.TOTAL_NUM_BLOCKS - 2) and (block_number in self.cache.keys()):
-                    logging.info("CACHE_HIT {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
+                    print("CACHE_HIT {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
                     return self.cache[block_number]
                 
                 if block_number not in self.cache.keys() or (block_number == fsconfig.TOTAL_NUM_BLOCKS - 1 or block_number == fsconfig.TOTAL_NUM_BLOCKS - 2):
                     ret = self.block_server.Get(block_number)
-                    logging.info("CACHE_MISS {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
+                    print("CACHE_MISS {BLOCK_NUMBER}".format(BLOCK_NUMBER=block_number))
                     if ret == -1:
                         logging.error('Get: Server returns error')
                         quit()
@@ -110,7 +108,7 @@ class DiskBlocks():
             quit()
             
         except TimeoutError:
-            logging.error('SERVER_TIMED_OUT')
+            print('SERVER_TIMED_OUT')
             # retry request
             return self.Get(block_number)
 
@@ -170,7 +168,7 @@ class DiskBlocks():
         invalid_cache = self.CheckAndInvalidateCache()
         if invalid_cache:
             # set current client id
-            logging.info("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=fsconfig.TOTAL_NUM_BLOCKS - 2))
+            print("CACHE_WRITE_THROUGH {BLOCK_NUMBER}".format(BLOCK_NUMBER=fsconfig.TOTAL_NUM_BLOCKS - 2))
         R1 = self.RSM (fsconfig.TOTAL_NUM_BLOCKS - 1)  # read and set RSM block
         while True: 
             if R1 is not fsconfig.RSM_LOCKED: 
@@ -188,7 +186,7 @@ class DiskBlocks():
             # invalidate the cache
             self.cache = {}
             # log that the cache has been invalidated
-            logging.info("CACHE_INVALIDATED")
+            print("CACHE_INVALIDATED")
             return True
         return False
         
