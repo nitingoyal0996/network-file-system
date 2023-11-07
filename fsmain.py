@@ -8,7 +8,6 @@ from filename import *
 from fileoperations import *
 from absolutepath import *
 
-
 import os.path
 
 if __name__ == "__main__":
@@ -54,10 +53,9 @@ if __name__ == "__main__":
     # Create a FileOperations object
     FileOperationsObject = FileOperations(FileObject)
 
-    # Create a AbsolutePathName object 
-    AbsolutePathNameObject = AbsolutePathName(FileObject)
+    # Create a AbsolutePath object
+    AbsolutePathObject = AbsolutePathName(FileObject)
 
     # Run the interactive shell interpreter
-    myshell = FSShell(RawBlocks, FileOperationsObject, AbsolutePathNameObject)
+    myshell = FSShell(RawBlocks, FileOperationsObject, AbsolutePathObject)
     myshell.Interpreter()
-
