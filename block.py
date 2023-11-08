@@ -17,19 +17,37 @@ class DiskBlocks():
             quit()
 
         # initialize XMLRPC client connection to raw block server
-        if fsconfig.PORT:
-            PORT = fsconfig.PORT
+        if fsconfig.START_PORT_NUM:
+            START_PORT_NUM = fsconfig.START_PORT_NUM
         else:
-            print('Must specify port number')
+            print('Must specify a starting port number')
             quit()
-        server_url = 'http://' + fsconfig.SERVER_ADDRESS + ':' + str(PORT)
-        self.block_server = xmlrpc.client.ServerProxy(server_url, use_builtin_types=True)
+
+        # initialize the server address array
+        self.server_addresses = []
+        for i in range(0, fsconfig.MAX_SERVERS):
+            self.server_addresses.append('http://' + fsconfig.SERVER_ADDRESS + ':' + str(START_PORT_NUM + i))
+        
+        # initialize block_server array
+        self.block_servers = []
+        for i in range(0, fsconfig.MAX_SERVERS):
+            self.block_servers.append(xmlrpc.client.ServerProxy(self.server_addresses[i], use_builtin_types=True))
+
+        # pick random rsm_block_server to store RSM information
+        self.rsm_block_server = self.block_servers[fsconfig.MAX_SERVERS-1]
+
+
         socket.setdefaulttimeout(fsconfig.SOCKET_TIMEOUT)
         # initialize block cache empty
         self.blockcache = {}
 
     ## Put: interface to write a raw block of data to the block indexed by block number
     ## Blocks are padded with zeroes up to BLOCK_SIZE
+
+    # overload print method to check for cache log enabled or not before printing
+    def print_log(self, *args, **kwargs):
+        if fsconfig.LOG_CACHE:
+            print(*args, **kwargs)
 
     def Put(self, block_number, block_data):
 
@@ -50,17 +68,25 @@ class DiskBlocks():
             while rpcretry:
                 rpcretry = False
                 try:
-                    ret = self.block_server.Put(block_number, putdata)
+                    if block_number == fsconfig.TOTAL_NUM_BLOCKS - 1:
+                        # RAID-1: only last server will have RSM information
+                        ret = self.rsm_block_server.Put(block_number, putdata)
+                    else:
+                        # RAID-1: send the request to all the servers
+                        # with round robin over all the servers to perform the same Put operation
+                        # ret = self.block_servers.Put(block_number, putdata)
+                        for i in range(0, fsconfig.MAX_SERVERS):
+                            ret = self.block_servers[i].Put(block_number, putdata)
                 except socket.timeout:
                     print("SERVER_TIMED_OUT")
                     time.sleep(fsconfig.RETRY_INTERVAL)
                     rpcretry = True
             # update block cache
-            print('CACHE_WRITE_THROUGH ' + str(block_number))
+            self.print_log('CACHE_WRITE_THROUGH ' + str(block_number))
             self.blockcache[block_number] = putdata
             # flag this is the last writer
             # unless this is a release - which doesn't flag last writer
-            if block_number != fsconfig.TOTAL_NUM_BLOCKS-1:
+            if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1:
                 LAST_WRITER_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 2
                 updated_block = bytearray(fsconfig.BLOCK_SIZE)
                 updated_block[0] = fsconfig.CID
@@ -68,7 +94,10 @@ class DiskBlocks():
                 while rpcretry:
                     rpcretry = False
                     try:
-                        self.block_server.Put(LAST_WRITER_BLOCK, updated_block)
+                        # RAID-1: send the request to all the servers
+                        # with round robin over all the servers to perform the same Put operation
+                        for i in range(0, fsconfig.MAX_SERVERS):
+                            self.block_servers[i].Put(LAST_WRITER_BLOCK, updated_block)  
                     except socket.timeout:
                         print("SERVER_TIMED_OUT")
                         time.sleep(fsconfig.RETRY_INTERVAL)
@@ -95,15 +124,20 @@ class DiskBlocks():
             # call Get() method on the server
             # don't look up cache for last two blocks
             if (block_number < fsconfig.TOTAL_NUM_BLOCKS-2) and (block_number in self.blockcache):
-                print('CACHE_HIT '+ str(block_number))
+                self.print_log('CACHE_HIT '+ str(block_number))
                 data = self.blockcache[block_number]
             else:
-                print('CACHE_MISS ' + str(block_number))
+                self.print_log('CACHE_MISS ' + str(block_number))
                 rpcretry = True
                 while rpcretry:
                     rpcretry = False
                     try:
-                        data = self.block_server.Get(block_number)
+                        # RAID-1: get: response from one of the server, if it's a failure, retry from another one
+                        # data = self.block_servers[0].Get(block_number)
+                        for i in range(0, fsconfig.MAX_SERVERS):
+                            data = self.block_servers[i].Get(block_number)
+                            if data != -1:
+                                break
                     except socket.timeout:
                         print("SERVER_TIMED_OUT")
                         time.sleep(fsconfig.RETRY_INTERVAL)
@@ -116,7 +150,7 @@ class DiskBlocks():
         logging.error('DiskBlocks::Get: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
         quit()
 
-## RSM: read and set memory equivalent
+    ## RSM: read and set memory equivalent
 
     def RSM(self, block_number):
         logging.debug('RSM: ' + str(block_number))
@@ -125,7 +159,8 @@ class DiskBlocks():
             while rpcretry:
                 rpcretry = False
                 try:
-                    data = self.block_server.RSM(block_number)
+                    # RAID-1: only last server will have RSM information
+                    data = self.rsm_block_server.RSM(block_number)
                 except socket.timeout:
                     print("SERVER_TIMED_OUT")
                     time.sleep(fsconfig.RETRY_INTERVAL)
@@ -209,8 +244,8 @@ class DiskBlocks():
             file.close()
 
 
-## Prints to screen block contents, from min to max
-
+    ## Prints to screen block contents, from min to max
+    
     def PrintBlocks(self,tag,min,max):
         print ('#### Raw disk blocks: ' + tag)
         for i in range(min,max):
