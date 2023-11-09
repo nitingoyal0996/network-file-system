@@ -27,33 +27,35 @@ class DiskBlocks():
             quit()
 
 
-        # RAID-0: initialize block server
+        # Base implementation - single server
         # self.block_servers = xmlrpc.client.ServerProxy('http://' + fsconfig.SERVER_ADDRESS + ':' + str(PORT), use_builtin_types=True)
         
-        # RAID-1: initialize the server address array
+        # RAID-0/1: initialize the server address array
         self.server_addresses = []
         for i in range(0, fsconfig.MAX_SERVERS):
             self.server_addresses.append('http://' + fsconfig.SERVER_ADDRESS + ':' + str(START_PORT_NUM + i))
         
-        # RAID-0: initialize single block server connection
+        # Base implementation - single server
         # self.block_server = xmlrpc.client.ServerProxy(self.server_addresses[0], use_builtin_types=True)
 
-        # RAID-1: initialize block_server connections array
+        # RAID-0/1: initialize block_server connections array
         self.block_servers = []
         for i in range(0, fsconfig.MAX_SERVERS):
             self.block_servers.append(xmlrpc.client.ServerProxy(self.server_addresses[i], use_builtin_types=True))
 
-        # RAID-1: single rsm_block_server to store RSM information
+        # RAID-0/1: single block_server to store RSM information
         self.rsm_block_server = self.block_servers[fsconfig.MAX_SERVERS-1]
 
+        # RAID-0: round-robin index for block_server writes
+        # last server used
+        # self.last_block_server_idx = 0
+        # map of block number to block server
+        # self.block_server_map = {}
 
         socket.setdefaulttimeout(fsconfig.SOCKET_TIMEOUT)
         # initialize block cache empty
         self.blockcache = {}
 
-        # round-robin index for block_server writes
-        self.last_block_server_idx = 0
-        self.block_server_map = {}
 
     ## Put: interface to write a raw block of data to the block indexed by block number
     ## Blocks are padded with zeroes up to BLOCK_SIZE
@@ -84,24 +86,25 @@ class DiskBlocks():
                 try:
                     print('-------------PUT B-------------'+ str(block_number))
                     if block_number == fsconfig.TOTAL_NUM_BLOCKS - 1:
-                        # RAID-1: only last server will have RSM information
+                        # RAID-0/1: only last server will have RSM information
                         ret = self.rsm_block_server.Put(block_number, putdata)
 
                     else:
+                        # Base implementation - single server
                         # ret = self.block_server.Put(block_number, putdata)
-                        # RAID-0
-                        if block_number not in self.block_server_map:
-                            self.block_server = self.block_servers[self.last_block_server_idx]
-                            self.block_server_map[block_number] = self.block_server
-                            self.last_block_server_idx = (self.last_block_server_idx + 1) % fsconfig.MAX_SERVERS
-                            ret = self.block_server.Put(block_number, putdata)
-                        else:
-                            ret = self.block_server_map[block_number].Put(block_number, putdata)
+
+                        # RAID-0: Round Robin storage over the servers
+                        # if block_number not in self.block_server_map:
+                        #     self.block_server = self.block_servers[self.last_block_server_idx]
+                        #     self.block_server_map[block_number] = self.block_server
+                        #     self.last_block_server_idx = (self.last_block_server_idx + 1) % fsconfig.MAX_SERVERS
+                        #     ret = self.block_server.Put(block_number, putdata)
+                        # else:
+                        #     ret = self.block_server_map[block_number].Put(block_number, putdata)
 
                         # RAID-1: send the request to all the servers
-                        # with round robin over all the servers to perform the same Put operation
-                        # for i in range(0, fsconfig.MAX_SERVERS):
-                        #     ret = self.block_servers[i].Put(block_number, putdata)
+                        for i in range(0, fsconfig.MAX_SERVERS):
+                            ret = self.block_servers[i].Put(block_number, putdata)
                 except socket.timeout:
                     print("SERVER_TIMED_OUT")
                     time.sleep(fsconfig.RETRY_INTERVAL)
@@ -119,20 +122,21 @@ class DiskBlocks():
                 while rpcretry:
                     rpcretry = False
                     try:
+                        # Base implementation - single server
                         # ret = self.block_server.Put(LAST_WRITER_BLOCK, updated_block)  
-                        # RAID-0
-                        # RAID-0
-                        if LAST_WRITER_BLOCK not in self.block_server_map:
-                            self.block_server = self.block_servers[self.last_block_server_idx]
-                            self.block_server_map[LAST_WRITER_BLOCK] = self.block_server
-                            self.last_block_server_idx = (self.last_block_server_idx + 1) % fsconfig.MAX_SERVERS
-                            ret = self.block_server.Put(LAST_WRITER_BLOCK, updated_block)
-                        else:
-                            ret = self.block_server_map[LAST_WRITER_BLOCK].Put(LAST_WRITER_BLOCK, updated_block)
+
+                        # RAID-0: Round Robin storage over the servers
+                        # if LAST_WRITER_BLOCK not in self.block_server_map:
+                        #     self.block_server = self.block_servers[self.last_block_server_idx]
+                        #     self.block_server_map[LAST_WRITER_BLOCK] = self.block_server
+                        #     self.last_block_server_idx = (self.last_block_server_idx + 1) % fsconfig.MAX_SERVERS
+                        #     ret = self.block_server.Put(LAST_WRITER_BLOCK, updated_block)
+                        # else:
+                        #     ret = self.block_server_map[LAST_WRITER_BLOCK].Put(LAST_WRITER_BLOCK, updated_block)
+                        
                         # RAID-1: send the request to all the servers
-                        # with round robin over all the servers to perform the same Put operation
-                        # for i in range(0, fsconfig.MAX_SERVERS):
-                        #     self.block_servers[i].Put(LAST_WRITER_BLOCK, updated_block)  
+                        for i in range(0, fsconfig.MAX_SERVERS):
+                            self.block_servers[i].Put(LAST_WRITER_BLOCK, updated_block)  
                     except socket.timeout:
                         print("SERVER_TIMED_OUT")
                         time.sleep(fsconfig.RETRY_INTERVAL)
@@ -167,20 +171,23 @@ class DiskBlocks():
                 while rpcretry:
                     rpcretry = False
                     try:
+                        # Base implementation - single server
                         # data = self.block_server.Get(block_number)
-                        # RAID-0
-                        if block_number not in self.block_server_map:
-                            self.block_server = self.block_servers[self.last_block_server_idx]
-                            self.block_server_map[block_number] = self.block_server
-                            self.last_block_server_idx = (self.last_block_server_idx + 1) % fsconfig.MAX_SERVERS
-                            data = self.block_server.Get(block_number)
-                        else:
-                            data = self.block_server_map[block_number].Get(block_number)
+
+                        # RAID-0: Since Round Robin storage over all the servers
+                        # if block_number not in self.block_server_map:
+                        #     self.block_server = self.block_servers[self.last_block_server_idx]
+                        #     self.block_server_map[block_number] = self.block_server
+                        #     self.last_block_server_idx = (self.last_block_server_idx + 1) % fsconfig.MAX_SERVERS
+                        #     data = self.block_server.Get(block_number)
+                        # else:
+                        #     data = self.block_server_map[block_number].Get(block_number)
+
                         # RAID-1: get: response from one of the server, if it's a failure, retry from another one
-                        # for i in range(0, fsconfig.MAX_SERVERS):
-                        #     data = self.block_servers[i].Get(block_number)
-                        #     if data != -1:
-                        #         break
+                        for i in range(0, fsconfig.MAX_SERVERS):
+                            data = self.block_servers[i].Get(block_number)
+                            if data != -1:
+                                break
                     except socket.timeout:
                         print("SERVER_TIMED_OUT")
                         time.sleep(fsconfig.RETRY_INTERVAL)
@@ -202,9 +209,10 @@ class DiskBlocks():
             while rpcretry:
                 rpcretry = False
                 try:
-                    # RAID-0
+                    # Base implementation - single server
                     # data = self.block_server.RSM(block_number)
-                    # RAID-1: only last server will have RSM information
+
+                    # RAID-0/1: only last server will have RSM information
                     data = self.rsm_block_server.RSM(block_number)
                 except socket.timeout:
                     print("SERVER_TIMED_OUT")
