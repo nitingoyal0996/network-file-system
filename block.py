@@ -17,23 +17,33 @@ class DiskBlocks():
             quit()
 
         # initialize XMLRPC client connection to raw block server
+        # RAID-0: port number for the block server
+        # if fsconfig.START_PORT_NUM:
+        # RAID-1: starting port number for block server array
         if fsconfig.START_PORT_NUM:
             START_PORT_NUM = fsconfig.START_PORT_NUM
         else:
             print('Must specify a starting port number')
             quit()
 
-        # initialize the server address array
+
+        # RAID-0: initialize block server
+        # self.block_servers = xmlrpc.client.ServerProxy('http://' + fsconfig.SERVER_ADDRESS + ':' + str(PORT), use_builtin_types=True)
+        
+        # RAID-1: initialize the server address array
         self.server_addresses = []
         for i in range(0, fsconfig.MAX_SERVERS):
             self.server_addresses.append('http://' + fsconfig.SERVER_ADDRESS + ':' + str(START_PORT_NUM + i))
         
-        # initialize block_server array
+        # RAID-0: initialize single block server connection
+        # self.block_server = xmlrpc.client.ServerProxy(self.server_addresses[0], use_builtin_types=True)
+
+        # RAID-1: initialize block_server connections array
         self.block_servers = []
         for i in range(0, fsconfig.MAX_SERVERS):
             self.block_servers.append(xmlrpc.client.ServerProxy(self.server_addresses[i], use_builtin_types=True))
 
-        # pick random rsm_block_server to store RSM information
+        # RAID-1: single rsm_block_server to store RSM information
         self.rsm_block_server = self.block_servers[fsconfig.MAX_SERVERS-1]
 
 
@@ -72,9 +82,10 @@ class DiskBlocks():
                         # RAID-1: only last server will have RSM information
                         ret = self.rsm_block_server.Put(block_number, putdata)
                     else:
+                        # RAID-0
+                        # ret = self.block_server.Put(block_number, putdata)
                         # RAID-1: send the request to all the servers
                         # with round robin over all the servers to perform the same Put operation
-                        # ret = self.block_servers.Put(block_number, putdata)
                         for i in range(0, fsconfig.MAX_SERVERS):
                             ret = self.block_servers[i].Put(block_number, putdata)
                 except socket.timeout:
@@ -94,6 +105,8 @@ class DiskBlocks():
                 while rpcretry:
                     rpcretry = False
                     try:
+                        # RAID-0
+                        # ret = self.block_server.Put(LAST_WRITER_BLOCK, updated_block)  
                         # RAID-1: send the request to all the servers
                         # with round robin over all the servers to perform the same Put operation
                         for i in range(0, fsconfig.MAX_SERVERS):
@@ -132,8 +145,9 @@ class DiskBlocks():
                 while rpcretry:
                     rpcretry = False
                     try:
+                        # RAID-0
+                        # data = self.block_server.Get(block_number)
                         # RAID-1: get: response from one of the server, if it's a failure, retry from another one
-                        # data = self.block_servers[0].Get(block_number)
                         for i in range(0, fsconfig.MAX_SERVERS):
                             data = self.block_servers[i].Get(block_number)
                             if data != -1:
@@ -159,6 +173,8 @@ class DiskBlocks():
             while rpcretry:
                 rpcretry = False
                 try:
+                    # RAID-0
+                    # data = self.block_server.RSM(block_number)
                     # RAID-1: only last server will have RSM information
                     data = self.rsm_block_server.RSM(block_number)
                 except socket.timeout:
