@@ -380,6 +380,13 @@ class FSShell():
                     self.RawBlocks.Acquire()
                     self.lns(splitcmd[1], splitcmd[2])
                     self.RawBlocks.Release()
+            elif splitcmd[0] == "repair":
+                if len(splitcmd) != 2:
+                    print("Error: repair requires one arguments")
+                else:
+                    self.RawBlocks.Acquire()
+                    self.RawBlocks.Repair(splitcmd[1])
+                    self.RawBlocks.Release()
             elif splitcmd[0] == "exit":
                 return
             else:

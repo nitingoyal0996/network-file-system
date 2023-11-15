@@ -201,3 +201,16 @@ class DiskBlocks():
         print ('#### Raw disk blocks: ' + tag)
         for i in range(min,max):
             print ('Block [' + str(i) + '] : ' + str((self.Get(i)).hex()))
+
+    def Repair(self, server_id):
+        '''
+        Must implement simple process of repairing/recovery.
+
+        1. When a server is crashed is replaced by a new server with blank blocks.
+        2. Repair procedure:
+            1. command `repair server_id`
+            2. client locks access to the disk
+            3. reconnects to `server_id`
+            4. regenerates all blocks for `server_id` using data from other servers in the array.
+        '''
+        pass
