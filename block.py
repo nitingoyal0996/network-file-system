@@ -43,18 +43,11 @@ class DiskBlocks():
             # ljust does the padding with zeros
             putdata = bytearray(block_data.ljust(fsconfig.BLOCK_SIZE, b'\x00'))
             # Write block
-            # commenting this out as the request now goes to the server
-            # self.block[block_number] = putdata
-            # call Put() method on the server; code currently quits on any server failure
-            rpcretry = True
-            while rpcretry:
-                rpcretry = False
-                try:
-                    ret = self.block_server.Put(block_number, putdata)
-                except socket.timeout:
-                    print("SERVER_TIMED_OUT")
-                    time.sleep(fsconfig.RETRY_INTERVAL)
-                    rpcretry = True
+            # at-most-once semantics
+            try:
+                ret = self.block_server.Put(block_number, putdata)
+            except:
+                print("SERVER_DISCONNECTED")
             # update block cache
             print('CACHE_WRITE_THROUGH ' + str(block_number))
             self.blockcache[block_number] = putdata
@@ -64,15 +57,11 @@ class DiskBlocks():
                 LAST_WRITER_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 2
                 updated_block = bytearray(fsconfig.BLOCK_SIZE)
                 updated_block[0] = fsconfig.CID
-                rpcretry = True
-                while rpcretry:
-                    rpcretry = False
-                    try:
-                        self.block_server.Put(LAST_WRITER_BLOCK, updated_block)
-                    except socket.timeout:
-                        print("SERVER_TIMED_OUT")
-                        time.sleep(fsconfig.RETRY_INTERVAL)
-                        rpcretry = True
+                # at-most-once semantics
+                try:
+                    self.block_server.Put(LAST_WRITER_BLOCK, updated_block)
+                except:
+                    print("SERVER_DISCONNECTED")
             if ret == -1:
                 logging.error('Put: Server returns error')
                 quit()
@@ -99,15 +88,11 @@ class DiskBlocks():
                 data = self.blockcache[block_number]
             else:
                 print('CACHE_MISS ' + str(block_number))
-                rpcretry = True
-                while rpcretry:
-                    rpcretry = False
-                    try:
-                        data = self.block_server.Get(block_number)
-                    except socket.timeout:
-                        print("SERVER_TIMED_OUT")
-                        time.sleep(fsconfig.RETRY_INTERVAL)
-                        rpcretry = True
+                # at-most-once semantics
+                try:
+                    data = self.block_server.Get(block_number)
+                except:
+                    print("SERVER_CONNECTED")
                 # add to cache
                 self.blockcache[block_number] = data
             # return as bytearray
@@ -121,15 +106,11 @@ class DiskBlocks():
     def RSM(self, block_number):
         logging.debug('RSM: ' + str(block_number))
         if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
-            rpcretry = True
-            while rpcretry:
-                rpcretry = False
-                try:
-                    data = self.block_server.RSM(block_number)
-                except socket.timeout:
-                    print("SERVER_TIMED_OUT")
-                    time.sleep(fsconfig.RETRY_INTERVAL)
-                    rpcretry = True
+            # at-most-once semantics
+            try:
+                data = self.block_server.RSM(block_number)
+            except:
+                print("SERVER_DISCONNECTED")
 
             return bytearray(data)
 
