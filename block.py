@@ -28,6 +28,11 @@ class DiskBlocks():
         # initialize block cache empty
         self.blockcache = {}
 
+    # validates whether the cache logging is enabled by the user or not
+    def print_cache_logs(self, message):
+        if fsconfig.LOG_CACHE != False:
+            print(message)
+
     ## Put: interface to write a raw block of data to the block indexed by block number
     ## Blocks are padded with zeroes up to BLOCK_SIZE
 
@@ -49,7 +54,7 @@ class DiskBlocks():
             except:
                 print("SERVER_DISCONNECTED")
             # update block cache
-            print('CACHE_WRITE_THROUGH ' + str(block_number))
+            self.print_cache_logs('CACHE_WRITE_THROUGH ' + str(block_number))
             self.blockcache[block_number] = putdata
             # flag this is the last writer
             # unless this is a release - which doesn't flag last writer
@@ -84,10 +89,10 @@ class DiskBlocks():
             # call Get() method on the server
             # don't look up cache for last two blocks
             if (block_number < fsconfig.TOTAL_NUM_BLOCKS-2) and (block_number in self.blockcache):
-                print('CACHE_HIT '+ str(block_number))
+                self.print_cache_logs('CACHE_HIT '+ str(block_number))
                 data = self.blockcache[block_number]
             else:
-                print('CACHE_MISS ' + str(block_number))
+                self.print_cache_logs('CACHE_MISS ' + str(block_number))
                 # at-most-once semantics
                 try:
                     data = self.block_server.Get(block_number)
@@ -143,7 +148,7 @@ class DiskBlocks():
         last_writer = self.Get(LAST_WRITER_BLOCK)
         # if ID of last writer is not self, invalidate and update
         if last_writer[0] != fsconfig.CID:
-            print("CACHE_INVALIDATED")
+            self.print_cache_logs("CACHE_INVALIDATED")
             self.blockcache = {}
             updated_block = bytearray(fsconfig.BLOCK_SIZE)
             updated_block[0] = fsconfig.CID
