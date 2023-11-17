@@ -31,7 +31,7 @@ if __name__ == "__main__":
     ap.add_argument('-port', '--port', type=int, help='an integer value')
     ap.add_argument('-startport', '--start_port_num', type=int, help='an integer value')
     ap.add_argument('-ns', '--num_of_servers', type=str, help='a integer value')
-    ap.add_argument('-logcache', '--log_cache', type=int, help='an boolean value')
+    ap.add_argument('-logcache', '--log_cache', type=int, help='0 or 1 value')
 
     # Other than FS args, consecutive args will be captured in by 'arg' as list
     ap.add_argument('arg', nargs='*')

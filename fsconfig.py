@@ -48,7 +48,7 @@ def ConfigureFSConstants(args):
     if args.num_of_servers:
         MAX_SERVERS = int(args.num_of_servers)
     if args.log_cache:
-        LOG_CACHE = args.log_cache
+        LOG_CACHE = args.log_cache == 1
     if args.start_port_num:
         START_PORT_NUM = args.start_port_num
 
