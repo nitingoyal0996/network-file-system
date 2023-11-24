@@ -385,7 +385,7 @@ class FSShell():
                     print("Error: repair requires one arguments")
                 else:
                     self.RawBlocks.Acquire()
-                    self.RawBlocks.Repair(splitcmd[1])
+                    self.RawBlocks.RepairServer(splitcmd[1])
                     self.RawBlocks.Release()
             elif splitcmd[0] == "exit":
                 return
