@@ -35,7 +35,6 @@ class DiskBlocks():
 
         self.parity_server_idx = fsconfig.MAX_SERVERS - 1
         self.data_blocks_per_disk = int((fsconfig.TOTAL_NUM_BLOCKS / (fsconfig.MAX_SERVERS)))
-        self.total_virtual_blocks = fsconfig.TOTAL_NUM_BLOCKS - self.data_blocks_per_disk
         
     # validates whether the cache logging is enabled by the user or not
     def print_cache_logs(self, message):
@@ -53,68 +52,73 @@ class DiskBlocks():
 
         if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
             # ljust does the padding with zeros
-            putdata = bytearray(block_data.ljust(fsconfig.BLOCK_SIZE, b'\x00'))
+            put_data = bytearray(block_data.ljust(fsconfig.BLOCK_SIZE, b'\x00'))
+            block_location = self.MapVirtualBlockToPhysicalAddress(block_number)
+            data = self.SinglePut(block_location[0], block_location[1], put_data)
+            logging.debug('DATA PUT: ' + str(put_data) + ' \nServer ID: ' + str(block_location[0]) + ' \nBlock Number: ' + str(block_location[1]))
             
-            # at-most-once semantics
-            block_location = self.VirtualToPhysicalAddress(block_number)
-            data = self.SinglePut(block_location[0], block_location[1], putdata)
-            logging.debug('DATA PUT: ' + str(putdata) + ' \nServer ID: ' + str(block_location[0]) + ' \nBlock Number: ' + str(block_location[1]))
-            
-            # if the location is not updating the rsm 
-            if block_number != self.total_virtual_blocks - 1:
-                parity, parity_server = self.ParityUpdate(block_number, block_location[1], putdata)
+            # update parity
+            if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1:
+                old_data = self.Get(block_number)
+                parity = self.GetParity(block_location[1], put_data, old_data)
+                parity_data, parity_server = parity[0], parity[1]
                 logging.debug('Initiate Parity Update At: ' + str(block_location[1]) + ' Parity Server: ' + str(parity_server))
-                
-                parity_data = self.SinglePut(parity_server, block_location[1], parity)
-                logging.debug('PARITY PUT: ' + str(block_location[1]) + ' \nParity Server ID: ' + str(parity_server) + ' \nParity: ' + str(parity))
+                parity_data = self.SinglePut(parity_server, block_location[1], parity_data)
+                logging.debug('PARITY PUT: ' + str(block_location[1]) + ' \nParity Server ID: ' + str(parity_server) + ' \nParity: ' + str(parity_data))
 
+                # error handling
                 if data == -1 and parity_data == -1:
                     logging.debug('PUT: Multiple Server Failures')
                     quit()
                 elif data == -1:
-                    print(f'SERVER_DISCONNECTED PUT DATA_BLOCK: {block_number}')
-                    # TODO: continue operation: retry write to the next available block
-                    self.Put(block_number + 1, putdata)
+                    # continue operation: Not Possible
+                    # self.Put(block_number + 1, put_data) # retry write to the next available block this would override the existing data on a different block, which is incorrect.
+                    logging.debug('PUT: Server Disconnected: ' + str(block_number))
+                    print(f'SERVER_DISCONNECTED: {block_number}')
                 elif parity_data == -1:
-                    print(f'SERVER_DISCONNECTED PUT PARITY_BLOCK: {block_number}')
-                    # TODO: continue operation: if we retry parity write to the next available block - how would we access this back, since the deterministic pattern is broken?
+                    # continue operation: Not Possible
+                    # if we retry parity write to the next available block - how would we access this back, since the deterministic pattern is broken?
+                    logging.debug('PUT: Parity Server Disconnected: ' + str(block_number))
+                    print(f'SERVER_DISCONNECTED: {block_number}')
                 elif data == -2 or parity_data == -2:
-                    print(f'SERVER_TIMED_OUT PUT {block_number}')
-                    logging.debug('PARITY LAST_WRITER PUT: ' + str(block_location[1]) + ' \nParity Server ID: ' + str(parity_server) + ' \nParity: ' + str(parity))
+                    print(f'SERVER_TIMED_OUT {block_number}')
+                    logging.debug('PARITY LAST_WRITER PUT: ' + str(block_location[1]) + ' \nParity Server ID: ' + str(parity_server) + ' \nParity: ' + str(parity_data))
                     quit()
 
-            # TODO: update block cache
+            # TODO: uncomment update block cache
             self.print_cache_logs('CACHE_WRITE_THROUGH ' + str(block_number))
             # self.blockcache[block_number] = putdata
             
             # flag this is the last writer
             # unless this is a release - which doesn't flag last writer
-            if block_number != self.total_virtual_blocks - 1:
-                LAST_WRITER_BLOCK = self.total_virtual_blocks - 2
-                block_location = self.VirtualToPhysicalAddress(LAST_WRITER_BLOCK)
+            if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1:
+                LAST_WRITER_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 2
+
+                block_location = self.MapVirtualBlockToPhysicalAddress(LAST_WRITER_BLOCK)
                 updated_block = bytearray(fsconfig.BLOCK_SIZE)
                 updated_block[0] = fsconfig.CID
-
+                old_data = self.Get(LAST_WRITER_BLOCK)
                 data = self.SinglePut(block_location[0], block_location[1], updated_block)
-                parity, parity_server = self.ParityUpdate(LAST_WRITER_BLOCK, block_location[1], updated_block)
-
-                logging.debug('Initiate Parity Update At LAST_WRITER: ' + str(block_location[1]) + ' Parity Server: ' + str(parity_server))
-                parity_data = self.SinglePut(parity_server, block_location[1], parity)
                 
-                if data == -1 and parity_data == -1:
-                    logging.debug('PUT: Multiple Server Failures')
-                    quit()
-                elif data == -1:
-                    print(f'SERVER_DISCONNECTED PUT LAST_WRITER_BLOCK: {block_number}')
-                    # TODO: continue operation: retry write to the next available block
-                    quit()
-                elif parity_data == -1:
-                    print(f'SERVER_DISCONNECTED PUT LAST_WRITER_PARITY_BLOCK: {block_number}')
-                    # TODO: continue operation: retry write to the next available block
-                    quit()
-                elif data == -2 or parity_data == -2:
-                    print(f'SERVER_TIMED_OUT PUT {block_number}')
-                    logging.debug('PARITY LAST_WRITER PUT: ' + str(block_location[1]) + ' \nParity Server ID: ' + str(parity_server) + ' \nParity: ' + str(parity))
+                # fetch parity location
+                # parity = self.GetParity(block_location[1], updated_block, old_data)
+                # parity_data, parity_server = parity[0], parity[1]
+                # logging.debug('Initiate Parity Update At LAST_WRITER: ' + str(block_location[1]) + ' Parity Server: ' + str(parity_server))
+                # parity_data = self.SinglePut(parity_server, block_location[1], parity_data)
+                
+                # error handling
+                # if data == -1 and parity_data == -1:
+                #     logging.debug('Last Writer: Put: Multiple Server Failures')
+                #     # quit()
+                if data == -1:
+                    logging.debug('Last Writer: Put: Server Disconnected: ' + str(block_number))
+                    print(f'SERVER_DISCONNECTED: {block_number}')
+                # elif parity_data == -1:
+                #     logging.debug('Last Writer: Put: Parity Server Disconnected: ' + str(block_number))
+                #     print(f'SERVER_DISCONNECTED: {block_number}')
+                elif data == -2:
+                    logging.debug('PARITY LAST_WRITER PUT: ' + str(block_location[1]) + ' \nParity Server ID: ' + str(parity_server) + ' \nParity: ' + str(parity_data))
+                    print(f'SERVER_TIMED_OUT {block_number}')
             return data
         else:
             logging.debug('ERROR: Put: Block out of range: ' + str(block_number))
@@ -127,32 +131,29 @@ class DiskBlocks():
         logging.debug('Get: ' + str(block_number))
         if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
             # except data and parity blocks - do not use cache
-            if (block_number < self.total_virtual_blocks - 2 or block_number > self.total_virtual_blocks) and (block_number in self.blockcache):
+            if (block_number < fsconfig.TOTAL_NUM_BLOCKS - 2 or block_number > fsconfig.TOTAL_NUM_BLOCKS) and (block_number in self.blockcache):
                 self.print_cache_logs('CACHE_HIT '+ str(block_number))
                 data = self.blockcache[block_number]
             else:
-                # retry = True
-                # while retry:
                 self.print_cache_logs('CACHE_MISS ' + str(block_number))
-                block_location = self.VirtualToPhysicalAddress(block_number)
+                
+                block_location = self.MapVirtualBlockToPhysicalAddress(block_number)
                 ret = self.SingleGet(block_location[0], block_location[1])
                 data, has_error = ret[0], ret[1]
-                # retry = False
 
                 if data == -1:
-                    print(f'SERVER_DISCONNECTED GET {block_number}')
+                    print(f'SERVER_DISCONNECTED {block_number}')
                     # continue function: recover the data from other servers and parity for that data strip and return
-                    data = self.RecoverBlock(block_location)
+                    data = self.RecoverDataBlock(block_location, block_number)
                 elif data == -2: 
-                    print(f'SERVER_TIMED_OUT GET {block_number}')
+                    print(f'SERVER_TIMED_OUT {block_number}')
                     # retry = True
                 elif has_error:
                     logging.debug('CHECKSUM_ERROR DETECTED: ' + str(block_number))
-                    print(f'GET CORRUPTED_BLOCK {block_location[1]}')
+                    print(f'CORRUPTED_BLOCK {block_number}')
+
                     # recover the corrupted block
-                    data = self.RecoverBlock(block_location)
-                    # Update the recovered block
-                    block_number = self.GetPhysicalAddressToVirtualBlock(block_location[0], block_location[1])
+                    data = self.RecoverDataBlock(block_location, block_number)
                     self.Put(block_number, data)
                     logging.debug('RECOVERY: PUT: Recovered Corrupt Block: Location: ' + str(block_number))
                     
@@ -161,42 +162,41 @@ class DiskBlocks():
             
             return bytearray(data)
 
-        logging.debug('ERROR: DiskBlocks::Get: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
+        logging.debug('ERROR: DiskBlocks::Get: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number) + ' ' + str(fsconfig.TOTAL_NUM_BLOCKS))
         quit()
 
     ## RSM: read and set memory equivalent
     def RSM(self, block_number):
         logging.debug('RSM: ' + str(block_number))
 
-        if block_number in range(0, self.total_virtual_blocks):
-            block_location = self.VirtualToPhysicalAddress(block_number)
+        if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
+            block_location = self.MapVirtualBlockToPhysicalAddress(block_number)
             ret = self.SingleRSM(block_location[0], block_location[1])
             data, has_error = ret[0], ret[1]
+
             if data == -1:
                 print(f'SERVER_DISCONNECTED RSM {block_number}')
                 # continue function: recover the data from other servers and parity for that data strip and return
-                data = self.RecoverBlock(block_location)
+                data = self.RecoverDataBlock(block_location, block_number)
             if data == -2: 
                 print(f'SERVER_TIMED_OUT RSM {block_number}')
             if has_error:
                 logging.debug('CHECKSUM_ERROR DETECTED ON RSM: ' + str(block_number))
                 print(f'RSM CORRUPTED_BLOCK {block_number}')
                 # recover the corrupted block
-                data = self.RecoverBlock(block_location)
-                # Update the recovered block
-                block_number = self.GetPhysicalAddressToVirtualBlock(block_location[0], block_location[1])
+                data = self.RecoverDataBlock(block_location, block_number)
                 self.Put(block_number, data)
-                logging.debug('RECOVERY: PUT: Recovered Corrupt Block: Location: ' + str(block_number))
+                logging.debug('RECOVERY: RSM: Recovered Corrupt Block: Location: ' + str(block_number))
                 
             return bytearray(data)
 
         logging.debug('ERROR: RSM: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number))
         quit()
 
-        ## Acquire and Release using a disk block lock
+    ## Acquire and Release using a disk block lock
     def Acquire(self):
         logging.debug('Acquire')
-        RSM_BLOCK = self.total_virtual_blocks - 1
+        RSM_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 1
         lockvalue = self.RSM(RSM_BLOCK);
         logging.debug("RSM_BLOCK Lock value: " + str(lockvalue))
         while lockvalue[0] == 1:  # test just first byte of block to check if RSM_LOCKED
@@ -208,13 +208,13 @@ class DiskBlocks():
 
     def Release(self):
         logging.debug('Release')
-        RSM_BLOCK = self.total_virtual_blocks - 1
+        RSM_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 1
         # Put()s a zero-filled block to release lock
         self.Put(RSM_BLOCK,bytearray(fsconfig.RSM_UNLOCKED.ljust(fsconfig.BLOCK_SIZE, b'\x00')))
         return 0
 
     def CheckAndInvalidateCache(self):
-        LAST_WRITER_BLOCK = self.total_virtual_blocks - 2
+        LAST_WRITER_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 2
         last_writer = self.Get(LAST_WRITER_BLOCK)
         # if ID of last writer is not self, invalidate and update
         if last_writer[0] != fsconfig.CID:
@@ -270,45 +270,42 @@ class DiskBlocks():
     #############################################################################
     # Mapping: Virtual to Physical Address Functions
     #############################################################################
-    def GetServerAndBlock(self,virtual_block_number):
+    def GetStripOffset (self, block_idx):
+        return block_idx * (fsconfig.MAX_SERVERS - 1)
+
+    def GetPhysicalAddressToVirtualBlock(self, server_index, block_idx):
+        return self.GetStripOffset(block_idx) + server_index
+
+    def GetParityServer(self, block_idx):
+        parity_server_id = (fsconfig.MAX_SERVERS - 1) - block_idx % fsconfig.MAX_SERVERS
+        return parity_server_id, block_idx
+
+    def GetStrip(self, block_idx):
+        # get the corresponding parity location 
+        parity_location = self.GetParityServer(block_idx)
+        parity_server, parity_block = parity_location[0], parity_location[1]
+        logging.debug('Parity Server: ' + str(parity_server) + ' Parity Block Index: ' + str(parity_block))
+        # get physical block numbers for all the blocks in the strip
+        strip_blocks = [self.GetPhysicalAddressToVirtualBlock(i, block_idx) for i in range(0, fsconfig.MAX_SERVERS - 1)]
+        logging.debug('Strip Blocks: ' + str(strip_blocks))
+        return strip_blocks, parity_block, parity_server
+    
+    def MapVirtualBlockToPhysicalAddress(self, virtual_block_number):
+        logging.debug('Process Virtual Block Number: ' + str(virtual_block_number))
         if (virtual_block_number < 0 or virtual_block_number > fsconfig.TOTAL_NUM_BLOCKS):
             print('block number is out of bounds')
             quit()
         # number of data servers = #total_servers - #parity_servers
         effective_servers = fsconfig.MAX_SERVERS - 1
-        block_number = virtual_block_number // effective_servers
-        parity_server_number = effective_servers - (block_number % fsconfig.MAX_SERVERS)
-        data_server_number = virtual_block_number % effective_servers
-        if parity_server_number <= data_server_number:
-            data_server_number = data_server_number + 1
+        block_idx = virtual_block_number // effective_servers
+        parity_server_number = effective_servers - (block_idx % fsconfig.MAX_SERVERS)
+        server_number = virtual_block_number % effective_servers
+        if parity_server_number <= server_number:
+            server_number = server_number + 1
         
-        logging.debug('V2P RESULTS: Data Server Number: ' + str(data_server_number) + ' Block Number on Disk: ' + str(block_number))
-        return data_server_number, block_number
+        logging.debug('V2P RESULTS: Data Server Number: ' + str(server_number) + ' Block Number on Disk: ' + str(block_idx))
+        return server_number, block_idx
 
-    def GetParityBlock(self,virtual_block_number):
-        if (virtual_block_number < 0 or virtual_block_number > fsconfig.TOTAL_NUM_BLOCKS):
-            print('block number is out of bounds')
-            quit()
-        _, block_number = self.GetServerAndBlock(virtual_block_number)
-        parity_server_id = fsconfig.MAX_SERVERS - 1 - block_number % fsconfig.MAX_SERVERS
-
-        return parity_server_id, block_number
-
-    def GetOtherStripBlockNumbers(self,virtual_block_number):
-        row_index, _ = self.GetServerAndBlock(virtual_block_number)
-        row_offset = row_index * (fsconfig.MAX_SERVERS - 1)
-        blocks = [row_offset + i for i in range(0, fsconfig.MAX_SERVERS)]
-        logging.debug('Other Row Blocks Detected: ' + str(blocks))
-        return blocks
-
-    def GetPhysicalAddressToVirtualBlock(self, server_index, block_index):
-        offset = block_index * (fsconfig.MAX_SERVERS - 1)
-        return offset + server_index
-    
-    def VirtualToPhysicalAddress(self, virtual_block_number):
-        logging.debug('Process Virtual Block Number: ' + str(virtual_block_number))
-        server_number, block_number_on_disk = self.GetServerAndBlock(virtual_block_number)
-        return server_number, block_number_on_disk
     #############################################################################
     # Parity: Block AND Server Recovery Functions
     #############################################################################
@@ -322,80 +319,123 @@ class DiskBlocks():
                 parity = bytearray(a ^ b for a, b in zip(parity, x))
         return parity
     
-    def ParityUpdate(self, virtual_block_number, block_idx, new_data):
+    def FetchDataBlocks(self, blocks):
+        logging.debug('Fetch Data Blocks: ' + str(blocks))
+        data_blocks = [
+            self.Get(block_number)
+            for block_number in blocks
+        ]
+        logging.debug('Data Blocks: ' + str(data_blocks))
+        return data_blocks
+
+    def GetParity(self, block_idx, new_data, old_data):
         logging.debug('Process Parity for Location: ' + str(block_idx))
-        old_data = self.Get(virtual_block_number)
         logging.debug('Old Data: ' + str(old_data) + ' \nNew Data: ' + str(new_data))
+
         # if the block_data and the parity previously was not empty - we could XOR the old_data, new_data and the old_parity to calculate the new parity
         # else when there is no parity - we could calculate the parity by XORing all the participating data blocks in the stripe
         # filter participating_blocks to remove the parity block
-        parity_server, parity_block_idx = self.GetParityBlock(virtual_block_number)
-        logging.debug('Parity Server: ' + str(parity_server) + ' Parity Block Index: ' + str(parity_block_idx))
+        parity_location = self.GetParityServer(block_idx)
+        parity_server, parity_block = parity_location[0], parity_location[1]
+        logging.debug('Parity Server: ' + str(parity_server) + ' Parity Block Index: ' + str(parity_block))
 
-        # if the old_data is not empty bytearray - fetch the parity block
-        if old_data != bytearray(b'\x00' * fsconfig.BLOCK_SIZE):
+        ret = self.SingleGet(parity_server, parity_block)
+        old_parity, _ = ret[0], ret[1]
+        logging.debug('Old Parity: ' + str(old_parity))
+        # error handling
+        if old_parity == -1:
+            logging.debug('Parity Server Disconnected: ' + str(block_idx) + ' Parity Server: ' + str(parity_server))
+            print(f'SERVER_DISCONNECTED: {block_idx}')
+            # recover parity block
+            old_parity = self.RecoverParityBlock(block_idx) 
+        
+        if old_data != bytearray(b'\x00' * fsconfig.BLOCK_SIZE) and old_parity != bytearray(b'\x00' * fsconfig.BLOCK_SIZE):
             logging.debug('Parity: Update')
-            parity_virtual_block_number = self.GetPhysicalAddressToVirtualBlock(parity_server, parity_block_idx)
-            ret = self.Get(parity_virtual_block_number)
-            old_parity = ret
-            logging.debug('Old Parity: ' + str(old_parity))
-            data_blocks = [old_data, new_data, old_parity]
+            data = [old_data, new_data, old_parity]
         else:
+            # create parity with data on the strip - data blocks
             logging.debug('Parity: Create')
-            # fetch participating data blocks excluding the parity server
-            participating_blocks = self.GetOtherStripBlockNumbers(block_idx)
-            participating_blocks.pop(parity_server)
-            # fetch data blocks - where data is available
-            data_blocks = [
-                self.Get(block_number)
-                for block_number in participating_blocks
-            ]
+            strip = self.GetStrip(block_idx)
+            blocks = strip[0]
+            data = self.FetchDataBlocks(blocks)
 
         # calculate and return parity 
-        new_parity = self.CalculateParity(data_blocks)
+        new_parity = self.CalculateParity(data)
         logging.debug('New Parity: ' + str(new_parity))
         return new_parity, parity_server
 
-    def RecoverBlock(self, location):
-        corrupt_server = location[0]
+    def RecoverDataBlock(self, location, block_number):
         block_idx = location[1]
-        corrupt_block_number = self.GetPhysicalAddressToVirtualBlock(corrupt_server, block_idx)
-        # TODO:Error: the corrupt block number should be equal to the Get>block_number
-        logging.debug('RECOVERY: GET: Corrupt Block: Location: ' + str(corrupt_block_number))
+        # input the block_number
+        corrupt_block_number = block_number
+        logging.debug('RECOVERY: Corrupt Block: Location: ' + str(corrupt_block_number))
         logging.debug('Started Recovery at Location:' + str(location))
 
         # Calculate participating blocks excluding the corrupt block
-        participating_blocks = self.GetOtherStripBlockNumbers(block_idx)
-        participating_blocks.pop(corrupt_server)
+        # data strip - data and parity blocks
+        strip = self.GetStrip(block_idx)
+        blocks = strip[0]
+        parity_block = strip[1]
+        parity_server = strip[2]
+        # remove the corrupt block from the participating blocks
+        blocks.remove(corrupt_block_number)
 
-        logging.debug('Participating blocks in recovery:' + str(participating_blocks))
+        logging.debug('Participating blocks in Recovery:' + str(blocks))
+        logging.debug('Participating Parity Block: ' + str(parity_block) + ' Parity Server: ' + str(parity_server))
+    
+        # fetch the strip parity to start recovery for the corrupt data block
+        ret = self.SingleGet(parity_server, parity_block)
+        parity_data = ret[0]
+        logging.debug('Parity Data: ' + str(parity_data))
 
         # Fetch data blocks excluding the corrupt block
-        data_blocks = [
-            self.Get(block_number)
-            for block_number in participating_blocks
-        ]
+        data = self.FetchDataBlocks(blocks)
+        data.append(parity_data)
 
-        recovered_block_data = self.CalculateParity(data_blocks)        
-        logging.debug('Recovered Data: ' + recovered_block_data.decode('utf-8', errors='ignore'))
+        recovered_block = self.CalculateParity(data)        
+        logging.debug('Recovered Data: ' + str(recovered_block))
 
-        return recovered_block_data
+        return recovered_block
+
+    def RecoverParityBlock(self, block_idx):
+        logging.debug('RECOVERY: Parity Block: Location: ' + str(block_idx))
+        # get the strip data block
+        strip = self.GetStrip(block_idx)
+        participating_blocks = strip[0]
+
+        # fetch the strip data blocks
+        blocks = self.FetchDataBlocks(participating_blocks)
+
+        # calculate parity
+        recovered_parity = self.CalculateParity(blocks)
+        logging.debug('Recovered Parity: ' + str(recovered_parity))
+
+        return recovered_parity
 
     def RepairServer(self, server_id): 
-        # TODO: ERROR: virtual to physical will skip the parity servers while mapping virtual block numbers
-        blocks_on_server = [int(block_idx) + int(server_id) for block_idx in range(0, self.data_blocks_per_disk)]
+        logging.debug('REPAIR: Server ID: ' + str(server_id))
 
-        logging.debug('RepairServer: SERVER RECOVERY STARTED: Server ID: ' + str(server_id) + ' Blocks: ' + str(blocks_on_server))
-        try: 
-            # recover data on the failed server one block at a time
-            for block in blocks_on_server:
-                recovered_block_data = self.RecoverBlock((int(server_id), block))
-                virtual_block_number = self.GetPhysicalAddressToVirtualBlock(int(server_id), block)
-                self.Put(virtual_block_number, recovered_block_data)
-            logging.debug('RepairServer: SERVER RECOVERY COMPLETED: Server ID: ' + str(server_id))
-            return 0
-        except Exception as e:
-            logging.debug('error: RepairServer: SERVER RECOVERY FAILED: Error ' + str(e))      
+        # virtual to physical will skip the parity servers while mapping virtual block numbers
+        parity_block_physical_ids = [fsconfig.MAX_SERVERS - int(server_id) - 1 + idx * 4 for idx in range(0, 64)]
+        logging.debug('Failed Parity Blocks Indices: ' + str(parity_block_physical_ids))
+        
+        data_block_physical_ids = [idx for idx in range(0, 256) if idx not in parity_block_physical_ids]
+        data_block_virtual_ids = [self.GetPhysicalAddressToVirtualBlock(int(server_id), idx) for idx in data_block_physical_ids]
+        
+        logging.debug('Failed Data Blocks: ' + str(data_block_virtual_ids))
+
+        # recover data blocks - RecoverDataBlock()
+        for block in zip(data_block_physical_ids, data_block_virtual_ids):
+            recovered_block_data = self.RecoverDataBlock((int(server_id), block[0]), block[1])
+            self.Put(block[1], recovered_block_data)
+
+        # recover parity blocks - RecoverParityBlock()
+        for block_idx in parity_block_physical_ids:
+            recovered_parity_data = self.RecoverParityBlock(block_idx)
+            self.SinglePut(server_id, block_idx, recovered_parity_data)
+
+        logging.debug('RepairServer: SERVER RECOVERY COMPLETED: Server ID: ' + str(server_id))
+        return 0
 
     def SingleGet(self, server_id, block_id):
         has_error = False
