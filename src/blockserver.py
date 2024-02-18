@@ -2,6 +2,7 @@ import pickle, logging
 import argparse
 import time
 import fsconfig
+import hashlib
 
 from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.server import SimpleXMLRPCRequestHandler
@@ -10,13 +11,19 @@ from xmlrpc.server import SimpleXMLRPCRequestHandler
 class RequestHandler(SimpleXMLRPCRequestHandler):
   rpc_paths = ('/RPC2',)
 
+# add checksum implementation
 class DiskBlocks():
+  md5 = hashlib.md5()
+  
   def __init__(self, total_num_blocks, block_size, delayat):
     # This class stores the raw block array
     self.block = []
     # initialize request counter
     self.counter = 0
     self.delayat = delayat
+    self.checksum = {} # block_number: checksum dict
+    self.make_corrupt = True
+    self.total_processed_requests = 0
     # Initialize raw blocks
     for i in range (0, total_num_blocks):
       putdata = bytearray(block_size)
@@ -25,7 +32,6 @@ class DiskBlocks():
   def Sleep(self):
     self.counter += 1
     if (self.counter % self.delayat) == 0:
-      # print('>>> Sleep: Counter ' +str(self.counter))
       time.sleep(10)
 
 if __name__ == "__main__":
@@ -37,6 +43,7 @@ if __name__ == "__main__":
   ap.add_argument('-bs', '--block_size', type=int, help='an integer value')
   ap.add_argument('-port', '--port', type=int, help='an integer value')
   ap.add_argument('-delayat', '--delayat', type=int, help='an integer value')
+  ap.add_argument('-cblk', '--corrupted_block_number', type=int, help='block number')
 
   args = ap.parse_args()
 
@@ -63,6 +70,10 @@ if __name__ == "__main__":
   else:
     # initialize delayat with artificially large number
     delayat = 1000000000
+  
+  cblk = None
+  if args.corrupted_block_number:
+    cblk = args.corrupted_block_number
 
   # initialize blocks
   RawBlocks = DiskBlocks(TOTAL_NUM_BLOCKS, BLOCK_SIZE, delayat)
@@ -70,18 +81,37 @@ if __name__ == "__main__":
   # Create server
   server = SimpleXMLRPCServer(("127.0.0.1", PORT), requestHandler=RequestHandler)
 
-
   def Get(block_number):
+    print('GET: ' + str(PORT) + ' ' + str(block_number))
+    has_error = False
     result = RawBlocks.block[block_number]
-    # print('>>> Get Before Sleep: ' + str(block_number) + ' ' + str(RawBlocks.counter))
+    # current_checksum = hashlib.md5(result).hexdigest()
+    # fetch checksum from cache
+    # block_checksum = RawBlocks.checksum.get(block_number)
+    # print('>>> Checksum Returned From GET Server ', block_checksum)
+    # if block_checksum != None and current_checksum != block_checksum:
+      # print('>>> Corrupt Block Detected: Checksum Mismatch')
+      # has_error = True
+    RawBlocks.total_processed_requests += 1
+    print('>>> Total Processed Requests: ', RawBlocks.total_processed_requests)
     RawBlocks.Sleep()
-    return result
+    return result, has_error
 
   server.register_function(Get)
 
   def Put(block_number, data):
+    print('PUT: ' + str(PORT) + ' ' + str(block_number))
     RawBlocks.block[block_number] = data.data
-    # print('>>> Put Before Sleep: ' + str(block_number) + ' ' + str(RawBlocks.counter))
+    block_checksum = hashlib.md5(data.data).hexdigest()
+    # emulating corruption
+    print('>>> Checksum Returned From PUT Server ', cblk, block_number)
+    if block_number == cblk and RawBlocks.make_corrupt: 
+      # RawBlocks.make_corrupt = False
+      block_checksum = block_checksum[:5] + '12345'
+    RawBlocks.checksum[block_number] = block_checksum
+    # print('>>> Returned From PUT Server: Stored Checksum ', block_checksum)
+    RawBlocks.total_processed_requests += 1
+    print('>>> Total Processed Requests: ', RawBlocks.total_processed_requests)
     RawBlocks.Sleep()
     return 0
 
@@ -89,12 +119,21 @@ if __name__ == "__main__":
 
   def RSM(block_number):
     RSM_LOCKED = bytearray(b'\x01') * 1
+    has_error = False
     result = RawBlocks.block[block_number]
-    # RawBlocks.block[block_number] = RSM_LOCKED
+    # current_checksum = hashlib.md5(result).hexdigest()
+     # fetch checksum from cache
+    # block_checksum = RawBlocks.checksum.get(block_number)
+    # print('>>> Checksum Returned From GET Server ', block_checksum)
+    # if block_checksum != None and current_checksum != block_checksum:
+    #   print('>>> Corrupt Block Detected: Checksum Mismatch')
+    #   has_error = True
     RawBlocks.block[block_number] = bytearray(RSM_LOCKED.ljust(BLOCK_SIZE,b'\x01'))
-    # print('>>> RSM Before Sleep: Counter ' +str(RawBlocks.counter))
+    # RawBlocks.checksum[block_number] = hashlib.md5(RSM_LOCKED).hexdigest()
+    RawBlocks.total_processed_requests += 1
+    print('>>> Total Processed Requests: ', RawBlocks.total_processed_requests)
     RawBlocks.Sleep()
-    return result
+    return result, has_error
 
   server.register_function(RSM)
 

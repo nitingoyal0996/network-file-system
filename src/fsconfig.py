@@ -15,7 +15,8 @@ def ConfigureFSConstants(args):
     # Call this function with args (from command-line arguments) to configure the file system
 
     global TOTAL_NUM_BLOCKS, BLOCK_SIZE, MAX_NUM_INODES, INODE_SIZE
-    global CID, PORT, MAX_CLIENTS, SERVER_ADDRESS, RSM_UNLOCKED, RSM_LOCKED, SOCKET_TIMEOUT, RETRY_INTERVAL
+    global CID, PORT, MAX_CLIENTS, SERVER_ADDRESS, RSM_UNLOCKED, RSM_LOCKED, SOCKET_TIMEOUT, RETRY_INTERVAL, \
+        MAX_SERVERS, START_PORT_NUM, LOG_CACHE
     # Default values
     # Total number of blocks in raw storage
     TOTAL_NUM_BLOCKS = 256
@@ -26,7 +27,10 @@ def ConfigureFSConstants(args):
     # Size of an inode (in Bytes)
     INODE_SIZE = 16
     CID = 0
-    PORT = 8000
+    # system will connect to port 8000 by default with maximum servers set to 1
+    START_PORT_NUM = 8000
+    MAX_SERVERS = 1
+    LOG_CACHE = False
 
     # Override defaults if provided in command line arguments (args)
     if args.total_num_blocks:
@@ -41,6 +45,12 @@ def ConfigureFSConstants(args):
         CID = args.client_id
     if args.port:
         PORT = args.port
+    if args.num_of_servers:
+        MAX_SERVERS = int(args.num_of_servers)
+    if args.log_cache:
+        LOG_CACHE = args.log_cache == 1
+    if args.start_port_num:
+        START_PORT_NUM = args.start_port_num
 
     # These are constants that SHOULD NEVER BE MODIFIED
     global MAX_FILENAME, INODE_NUMBER_DIRENTRY_SIZE, FREEBITMAP_BLOCK_OFFSET, INODE_BYTES_SIZE_TYPE_REFCNT, \
@@ -117,7 +127,6 @@ def ConfigureFSConstants(args):
     SOCKET_TIMEOUT = 5
     RETRY_INTERVAL = 10
 
-
 ## Prints out file system information
 
 def PrintFSConstants():
@@ -135,6 +144,9 @@ def PrintFSConstants():
     print ('Data blocks offset        : ' + str(DATA_BLOCKS_OFFSET))
     print ('Data block size (blocks)  : ' + str(DATA_NUM_BLOCKS))
     print ('Raw block layer layout: (B: boot, S: superblock, F: free bitmap, I: inode, D: data')
+    print ('Server Start Port Number  : ' + str(START_PORT_NUM))
+    print ('Maximum number of servers : ' + str(MAX_SERVERS))
+    print ('Cache Logging Enabled     : ' + str(LOG_CACHE))
     Layout = "BS"
     Id = "01"
     IdCount = 2

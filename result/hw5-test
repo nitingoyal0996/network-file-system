@@ -1,0 +1,11 @@
+[cwd=0]%mkdir dir
+[cwd=0]%cd dir 
+[cwd=1]%create f
+[cwd=1]%
+[cwd=1]%append f withdata
+Successfully appended 8 bytes.
+[cwd=1]%cd dir
+Error: not found
+[cwd=1]%cd ..
+[cwd=0]%create fbase
+[cwd=0]%append fbase withmoredata 

@@ -8,7 +8,6 @@ from filename import *
 from fileoperations import *
 from absolutepath import *
 
-
 import os.path
 
 if __name__ == "__main__":
@@ -30,6 +29,9 @@ if __name__ == "__main__":
     ap.add_argument('-is', '--inode_size', type=int, help='an integer value')
     ap.add_argument('-cid', '--client_id', type=int, help='an integer value')
     ap.add_argument('-port', '--port', type=int, help='an integer value')
+    ap.add_argument('-startport', '--start_port_num', type=int, help='an integer value')
+    ap.add_argument('-ns', '--num_of_servers', type=str, help='a integer value')
+    ap.add_argument('-logcache', '--log_cache', type=int, help='0 or 1 value')
 
     # Other than FS args, consecutive args will be captured in by 'arg' as list
     ap.add_argument('arg', nargs='*')
@@ -54,10 +56,9 @@ if __name__ == "__main__":
     # Create a FileOperations object
     FileOperationsObject = FileOperations(FileObject)
 
-    # Create a AbsolutePathName object 
-    AbsolutePathNameObject = AbsolutePathName(FileObject)
+    # Create a AbsolutePath object
+    AbsolutePathObject = AbsolutePathName(FileObject)
 
     # Run the interactive shell interpreter
-    myshell = FSShell(RawBlocks, FileOperationsObject, AbsolutePathNameObject)
+    myshell = FSShell(RawBlocks, FileOperationsObject, AbsolutePathObject)
     myshell.Interpreter()
-
