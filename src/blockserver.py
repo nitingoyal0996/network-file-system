@@ -23,6 +23,7 @@ class DiskBlocks():
     self.delayat = delayat
     self.checksum = {} # block_number: checksum dict
     self.make_corrupt = True
+    self.total_processed_requests = 0
     # Initialize raw blocks
     for i in range (0, total_num_blocks):
       putdata = bytearray(block_size)
@@ -80,18 +81,19 @@ if __name__ == "__main__":
   # Create server
   server = SimpleXMLRPCServer(("127.0.0.1", PORT), requestHandler=RequestHandler)
 
-
   def Get(block_number):
     print('GET: ' + str(PORT) + ' ' + str(block_number))
     has_error = False
     result = RawBlocks.block[block_number]
-    current_checksum = hashlib.md5(result).hexdigest()
+    # current_checksum = hashlib.md5(result).hexdigest()
     # fetch checksum from cache
-    block_checksum = RawBlocks.checksum.get(block_number)
+    # block_checksum = RawBlocks.checksum.get(block_number)
     # print('>>> Checksum Returned From GET Server ', block_checksum)
-    if block_checksum != None and current_checksum != block_checksum:
-      print('>>> Corrupt Block Detected: Checksum Mismatch')
-      has_error = True
+    # if block_checksum != None and current_checksum != block_checksum:
+      # print('>>> Corrupt Block Detected: Checksum Mismatch')
+      # has_error = True
+    RawBlocks.total_processed_requests += 1
+    print('>>> Total Processed Requests: ', RawBlocks.total_processed_requests)
     RawBlocks.Sleep()
     return result, has_error
 
@@ -104,11 +106,13 @@ if __name__ == "__main__":
     # emulating corruption
     print('>>> Checksum Returned From PUT Server ', cblk, block_number)
     if block_number == cblk and RawBlocks.make_corrupt: 
-      RawBlocks.make_corrupt = False
+      # RawBlocks.make_corrupt = False
       block_checksum = block_checksum[:5] + '12345'
     RawBlocks.checksum[block_number] = block_checksum
-    RawBlocks.Sleep()
     # print('>>> Returned From PUT Server: Stored Checksum ', block_checksum)
+    RawBlocks.total_processed_requests += 1
+    print('>>> Total Processed Requests: ', RawBlocks.total_processed_requests)
+    RawBlocks.Sleep()
     return 0
 
   server.register_function(Put)
@@ -126,7 +130,9 @@ if __name__ == "__main__":
     #   has_error = True
     RawBlocks.block[block_number] = bytearray(RSM_LOCKED.ljust(BLOCK_SIZE,b'\x01'))
     # RawBlocks.checksum[block_number] = hashlib.md5(RSM_LOCKED).hexdigest()
-    # RawBlocks.Sleep()
+    RawBlocks.total_processed_requests += 1
+    print('>>> Total Processed Requests: ', RawBlocks.total_processed_requests)
+    RawBlocks.Sleep()
     return result, has_error
 
   server.register_function(RSM)

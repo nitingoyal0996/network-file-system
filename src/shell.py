@@ -71,6 +71,23 @@ class FSShell():
         print('Block (showing raw hex data in block) [' + str(n) + '] : \n' + str((self.RawBlocks.Get(n).hex())))
         return 0
 
+    # implements showblock (log block n contents)
+    def showphysicalblock(self, sid, n):
+        try:
+            n = int(n)
+        except ValueError:
+            print('Error: ' + n + ' not a valid Integer')
+            return -1
+        if n < 0 or n >= fsconfig.TOTAL_NUM_BLOCKS:
+            print('Error: block number ' + str(n) + ' not in valid range [0, ' + str(fsconfig.TOTAL_NUM_BLOCKS - 1) + ']')
+            return -1
+        data = self.RawBlocks.SingleGet(sid, n)[0]
+        print(data)
+        print('Block (showing any string snippets in block the block) [' + str(n) + '] : \n' + str(
+            (data.decode(encoding='UTF-8', errors='ignore'))))
+        print('Block (showing raw hex data in block) [' + str(n) + '] : \n' + str((data.hex())))
+        return 0
+
     # implements showblockslice (log slice of block n contents)
     def showblockslice(self, n, start, end):
         try:
@@ -387,6 +404,11 @@ class FSShell():
                     self.RawBlocks.Acquire()
                     self.RawBlocks.RepairServer(splitcmd[1])
                     self.RawBlocks.Release()
+            elif splitcmd[0] == "showphysicalblock":
+                if len(splitcmd) != 3:
+                    print("Error: showphysicalblock requires two arguments")
+                else:
+                    self.showphysicalblock(int(splitcmd[1]), int(splitcmd[2]))
             elif splitcmd[0] == "exit":
                 return
             else:

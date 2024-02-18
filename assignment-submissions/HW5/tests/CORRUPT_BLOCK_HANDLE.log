@@ -1,0 +1,48 @@
+(eel4736-pocsd) ngoyal@n-goyal:~/ufl/eel5737-pocsd/File System$ python3 ./fsmain.py -port 8000 -cid 0 -startport 8000 -ns 4 -nb 768
+[cwd=0]%mkdir dir
+[cwd=0]%cd dir
+[cwd=1]%create f
+[cwd=1]%append f withdata 
+Successfully appended 8 bytes.
+[cwd=1]%cd .
+[cwd=1]%cd ..
+[cwd=0]%ls
+[2]:./
+[2]:dir/
+[cwd=0]%create ff
+[cwd=0]%append ff withdata 
+GET CORRUPTED_BLOCK 4
+Successfully appended 8 bytes.
+[cwd=0]%ls
+[3]:./
+[2]:dir/
+[1]:ff
+[cwd=0]%cd dir
+[cwd=1]%ls
+[2]:./
+[3]:../
+[1]:f
+[cwd=1]%cat f
+withdata
+[cwd=1]%cd ..
+[cwd=0]%ls
+[3]:./
+[2]:dir/
+[1]:ff
+[cwd=0]%cat ff
+
+[cwd=0]%append ff withdata 
+Successfully appended 8 bytes.
+[cwd=0]%cat ff
+withdata
+[cwd=0]%ls
+[3]:./
+[2]:dir/
+[1]:ff
+[cwd=0]%cd dir
+[cwd=1]%cat f
+withdata
+[cwd=1]%cd ..  
+[cwd=0]%cat ff
+withdata
+[cwd=0]%

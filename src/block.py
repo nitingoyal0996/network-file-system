@@ -87,7 +87,7 @@ class DiskBlocks():
 
             # TODO: uncomment update block cache
             self.print_cache_logs('CACHE_WRITE_THROUGH ' + str(block_number))
-            # self.blockcache[block_number] = putdata
+            self.blockcache[block_number] = put_data
             
             # flag this is the last writer
             # unless this is a release - which doesn't flag last writer
@@ -151,14 +151,11 @@ class DiskBlocks():
                 elif has_error:
                     logging.debug('CHECKSUM_ERROR DETECTED: ' + str(block_number))
                     print(f'CORRUPTED_BLOCK {block_number}')
-                    logging.debug('>>>>>> put happening...')
                     # recover the corrupted block
                     data = self.RecoverDataBlock(block_location, block_number)
-                    self.Put(block_number, data)
-                    logging.debug('RECOVERY: PUT: Recovered Corrupt Block: Location: ' + str(block_number))
                     
                 # TODO: add data to cache
-                # self.blockcache[block_number] = data
+                self.blockcache[block_number] = data
             
             return bytearray(data)
 
@@ -185,8 +182,6 @@ class DiskBlocks():
                 print(f'RSM CORRUPTED_BLOCK {block_number}')
                 # recover the corrupted block
                 data = self.RecoverDataBlock(block_location, block_number)
-                self.Put(block_number, data)
-                logging.debug('RECOVERY: RSM: Recovered Corrupt Block: Location: ' + str(block_number))
                 
             return bytearray(data)
 
