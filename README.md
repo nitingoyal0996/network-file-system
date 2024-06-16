@@ -3,11 +3,11 @@
 In this project implements a distributed file system in `python`. Application utilize <u>RAID5</u> architecture to enable efficient use of storage, load balancing and robust fault tolerance/recovery from single block or entire server failure using distributed parity blocks across servers and `md5` checksum.
 
 <div style="display: flex; justify-content: center; gap: 20px;">
-    <div align="center" style="max-width: 45%;">
+    <div align="center" style="max-width: 30%;">
         <img src="images/image-3.png" />
         <p>RAID5 Parity Distribution</p>
     </div>
-    <div align="center" style="max-width: 45%;">
+    <div align="center" style="max-width: 30%;">
         <img src="images/image-4.png" />
         <p>Server Failure</p>
     </div>
@@ -147,7 +147,7 @@ The majority of the logic was graded with automated tests - using github workflo
 
 ### Load distribution 
 
-<div align="center" style="max-width: 50%;">
+<div align="center" style="max-width: 30%;">
     <img src="images/image.png" />
     <p>Load Distribuion</p>
 </div>
