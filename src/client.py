@@ -1,9 +1,9 @@
 import pickle, logging
 import argparse
-import fsconfig
+import config
 
 from block import *
-from shell import *
+from cli import *
 from filename import *
 from fileoperations import *
 from absolutepath import *
@@ -40,10 +40,10 @@ if __name__ == "__main__":
     args = ap.parse_args()
 
     # Initialize file system configuration
-    fsconfig.ConfigureFSConstants(args)
+    config.ConfigureFSConstants(args)
 
     # Show file system information
-    # fsconfig.PrintFSConstants()
+    config.PrintFSConstants()
 
     # Initialize empty file system data in raw storage
     RawBlocks = DiskBlocks()

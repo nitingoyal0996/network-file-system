@@ -1,5 +1,5 @@
 import pickle, logging
-import fsconfig
+import config
 import xmlrpc.client, socket, time
 import math
 #### BLOCK LAYER
@@ -10,35 +10,35 @@ class DiskBlocks():
     def __init__(self):
 
         # initialize clientID
-        if fsconfig.CID >= 0 and fsconfig.CID < fsconfig.MAX_CLIENTS:
-            self.clientID = fsconfig.CID
+        if config.CID >= 0 and config.CID < config.MAX_CLIENTS:
+            self.clientID = config.CID
         else:
             print('Must specify valid cid')
             quit()
 
         # initialize XMLRPC client connection to raw block server
-        if fsconfig.START_PORT_NUM:
-            START_PORT_NUM = fsconfig.START_PORT_NUM
+        if config.START_PORT_NUM:
+            START_PORT_NUM = config.START_PORT_NUM
         else:
             print('Must specify a starting port number')
             quit()
 
-        socket.setdefaulttimeout(fsconfig.SOCKET_TIMEOUT)
+        socket.setdefaulttimeout(config.SOCKET_TIMEOUT)
         
         self.block_servers = {}
-        for i in range(0, fsconfig.MAX_SERVERS):
-            server_address = 'http://' + fsconfig.SERVER_ADDRESS + ':' + str(START_PORT_NUM + i)
+        for i in range(0, config.MAX_SERVERS):
+            server_address = 'http://' + config.SERVER_ADDRESS + ':' + str(START_PORT_NUM + i)
             self.block_servers[i] = xmlrpc.client.ServerProxy(server_address, use_builtin_types=True)
         
         # initialize block cache empty
         self.blockcache = {}
 
-        self.parity_server_idx = fsconfig.MAX_SERVERS - 1
-        self.data_blocks_per_disk = int((fsconfig.TOTAL_NUM_BLOCKS / (fsconfig.MAX_SERVERS)))
+        self.parity_server_idx = config.MAX_SERVERS - 1
+        self.data_blocks_per_disk = int((config.TOTAL_NUM_BLOCKS / (config.MAX_SERVERS)))
         
     # validates whether the cache logging is enabled by the user or not
     def print_cache_logs(self, message):
-        if fsconfig.LOG_CACHE != False:
+        if config.LOG_CACHE != False:
             print(message)
 
     ## Put: interface to write a raw block of data to the block indexed by block number
@@ -46,20 +46,20 @@ class DiskBlocks():
     def Put(self, block_number, block_data):
 
         logging.debug('Put: ' + str(block_number) + ' len ' + str(len(block_data)))
-        if len(block_data) > fsconfig.BLOCK_SIZE:
+        if len(block_data) > config.BLOCK_SIZE:
             logging.debug('error: Put: Block larger than BLOCK_SIZE: ' + str(len(block_data)))
             quit()
 
-        if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
+        if block_number in range(0, config.TOTAL_NUM_BLOCKS):
             old_data = self.Get(block_number)
             # ljust does the padding with zeros
-            put_data = bytearray(block_data.ljust(fsconfig.BLOCK_SIZE, b'\x00'))
+            put_data = bytearray(block_data.ljust(config.BLOCK_SIZE, b'\x00'))
             block_location = self.MapVirtualBlockToPhysicalAddress(block_number)
             data = self.SinglePut(block_location[0], block_location[1], put_data)
             logging.debug('DATA PUT: ' + str(put_data) + ' \nServer ID: ' + str(block_location[0]) + ' \nBlock Number: ' + str(block_location[1]))
             
             # update parity
-            # if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1:
+            # if block_number != config.TOTAL_NUM_BLOCKS - 1:
             parity = self.GetParity(block_location[1], put_data, old_data)
             parity_data, parity_server = parity[0], parity[1]
             logging.debug('Initiate Parity Update At: ' + str(block_location[1]) + ' Parity Server: ' + str(parity_server))
@@ -91,12 +91,12 @@ class DiskBlocks():
             
             # flag this is the last writer
             # unless this is a release - which doesn't flag last writer
-            if block_number != fsconfig.TOTAL_NUM_BLOCKS - 1:
-                LAST_WRITER_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 2
+            if block_number != config.TOTAL_NUM_BLOCKS - 1:
+                LAST_WRITER_BLOCK = config.TOTAL_NUM_BLOCKS - 2
 
                 block_location = self.MapVirtualBlockToPhysicalAddress(LAST_WRITER_BLOCK)
-                updated_block = bytearray(fsconfig.BLOCK_SIZE)
-                updated_block[0] = fsconfig.CID
+                updated_block = bytearray(config.BLOCK_SIZE)
+                updated_block[0] = config.CID
                 old_data = self.Get(LAST_WRITER_BLOCK)
                 data = self.SinglePut(block_location[0], block_location[1], updated_block)
                 
@@ -129,9 +129,9 @@ class DiskBlocks():
     def Get(self, block_number):
 
         logging.debug('Get: ' + str(block_number))
-        if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
+        if block_number in range(0, config.TOTAL_NUM_BLOCKS):
             # except data and parity blocks - do not use cache
-            if (block_number < fsconfig.TOTAL_NUM_BLOCKS - 2 or block_number > fsconfig.TOTAL_NUM_BLOCKS) and (block_number in self.blockcache):
+            if (block_number < config.TOTAL_NUM_BLOCKS - 2 or block_number > config.TOTAL_NUM_BLOCKS) and (block_number in self.blockcache):
                 self.print_cache_logs('CACHE_HIT '+ str(block_number))
                 data = self.blockcache[block_number]
             else:
@@ -159,14 +159,14 @@ class DiskBlocks():
             
             return bytearray(data)
 
-        logging.debug('ERROR: DiskBlocks::Get: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number) + ' ' + str(fsconfig.TOTAL_NUM_BLOCKS))
+        logging.debug('ERROR: DiskBlocks::Get: Block number larger than TOTAL_NUM_BLOCKS: ' + str(block_number) + ' ' + str(config.TOTAL_NUM_BLOCKS))
         quit()
 
     ## RSM: read and set memory equivalent
     def RSM(self, block_number):
         logging.debug('RSM: ' + str(block_number))
 
-        if block_number in range(0, fsconfig.TOTAL_NUM_BLOCKS):
+        if block_number in range(0, config.TOTAL_NUM_BLOCKS):
             block_location = self.MapVirtualBlockToPhysicalAddress(block_number)
             ret = self.SingleRSM(block_location[0], block_location[1])
             data, has_error = ret[0], ret[1]
@@ -191,7 +191,7 @@ class DiskBlocks():
     ## Acquire and Release using a disk block lock
     def Acquire(self):
         logging.debug('Acquire')
-        RSM_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 1
+        RSM_BLOCK = config.TOTAL_NUM_BLOCKS - 1
         lockvalue = self.RSM(RSM_BLOCK);
         logging.debug("RSM_BLOCK Lock value: " + str(lockvalue))
         while lockvalue[0] == 1:  # test just first byte of block to check if RSM_LOCKED
@@ -203,21 +203,21 @@ class DiskBlocks():
 
     def Release(self):
         logging.debug('Release')
-        RSM_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 1
+        RSM_BLOCK = config.TOTAL_NUM_BLOCKS - 1
         # Put()s a zero-filled block to release lock
-        self.Put(RSM_BLOCK,bytearray(fsconfig.RSM_UNLOCKED.ljust(fsconfig.BLOCK_SIZE, b'\x00')))
+        self.Put(RSM_BLOCK,bytearray(config.RSM_UNLOCKED.ljust(config.BLOCK_SIZE, b'\x00')))
         return 0
 
     def CheckAndInvalidateCache(self):
         # logging.debug('Check and Invalidate Cache')
-        LAST_WRITER_BLOCK = fsconfig.TOTAL_NUM_BLOCKS - 2
+        LAST_WRITER_BLOCK = config.TOTAL_NUM_BLOCKS - 2
         last_writer = self.Get(LAST_WRITER_BLOCK)
         # if ID of last writer is not self, invalidate and update
-        if last_writer[0] != fsconfig.CID:
+        if last_writer[0] != config.CID:
             self.print_cache_logs("CACHE_INVALIDATED")
             self.blockcache = {}
-            updated_block = bytearray(fsconfig.BLOCK_SIZE)
-            updated_block[0] = fsconfig.CID
+            updated_block = bytearray(config.BLOCK_SIZE)
+            updated_block[0] = config.CID
             self.Put(LAST_WRITER_BLOCK,updated_block)
 
     ## Serializes and saves the DiskBlocks block[] data structure to a "dump" file on your disk
@@ -225,8 +225,8 @@ class DiskBlocks():
 
         logging.info("DiskBlocks::DumpToDisk: Dumping pickled blocks to file " + filename)
         file = open(filename,'wb')
-        file_system_constants = "BS_" + str(fsconfig.BLOCK_SIZE) + "_NB_" + str((fsconfig.TOTAL_NUM_BLOCKS - self.data_blocks_per_disk)) + "_IS_" + str(fsconfig.INODE_SIZE) \
-                            + "_MI_" + str(fsconfig.MAX_NUM_INODES) + "_MF_" + str(fsconfig.MAX_FILENAME) + "_IDS_" + str(fsconfig.INODE_NUMBER_DIRENTRY_SIZE)
+        file_system_constants = "BS_" + str(config.BLOCK_SIZE) + "_NB_" + str((config.TOTAL_NUM_BLOCKS - self.data_blocks_per_disk)) + "_IS_" + str(config.INODE_SIZE) \
+                            + "_MI_" + str(config.MAX_NUM_INODES) + "_MF_" + str(config.MAX_FILENAME) + "_IDS_" + str(config.INODE_NUMBER_DIRENTRY_SIZE)
         pickle.dump(file_system_constants, file)
         pickle.dump(self.block, file)
 
@@ -237,8 +237,8 @@ class DiskBlocks():
 
         logging.info("DiskBlocks::LoadFromDump: Reading blocks from pickled file " + filename)
         file = open(filename,'rb')
-        file_system_constants = "BS_" + str(fsconfig.BLOCK_SIZE) + "_NB_" + str((fsconfig.TOTAL_NUM_BLOCKS - self.data_blocks_per_disk)) + "_IS_" + str(fsconfig.INODE_SIZE) \
-                            + "_MI_" + str(fsconfig.MAX_NUM_INODES) + "_MF_" + str(fsconfig.MAX_FILENAME) + "_IDS_" + str(fsconfig.INODE_NUMBER_DIRENTRY_SIZE)
+        file_system_constants = "BS_" + str(config.BLOCK_SIZE) + "_NB_" + str((config.TOTAL_NUM_BLOCKS - self.data_blocks_per_disk)) + "_IS_" + str(config.INODE_SIZE) \
+                            + "_MI_" + str(config.MAX_NUM_INODES) + "_MF_" + str(config.MAX_FILENAME) + "_IDS_" + str(config.INODE_NUMBER_DIRENTRY_SIZE)
 
         try:
             read_file_system_constants = pickle.load(file)
@@ -246,7 +246,7 @@ class DiskBlocks():
                 print('DiskBlocks::LoadFromDump Error: File System constants of File :' + read_file_system_constants + ' do not match with current file system constants :' + file_system_constants)
                 return -1
             block = pickle.load(file)
-            for i in range(0, (fsconfig.TOTAL_NUM_BLOCKS - self.data_blocks_per_disk)):
+            for i in range(0, (config.TOTAL_NUM_BLOCKS - self.data_blocks_per_disk)):
                 self.Put(i,block[i])
             return 0
         except TypeError:
@@ -267,14 +267,14 @@ class DiskBlocks():
     # Mapping: Virtual to Physical Address Functions
     #############################################################################
     def GetParityServer(self, block_idx):
-        parity_server_id = (fsconfig.MAX_SERVERS - 1) - block_idx % fsconfig.MAX_SERVERS
+        parity_server_id = (config.MAX_SERVERS - 1) - block_idx % config.MAX_SERVERS
         return parity_server_id, block_idx
 
     def GetBlockNumberAcrossServers(self, block_idx):
         logging.debug('Retrieve Block Number Across Servers for Block Index: ' + str(block_idx))
         
         # number of data servers = #total_servers - #parity_servers
-        effective_servers = fsconfig.MAX_SERVERS - 1
+        effective_servers = config.MAX_SERVERS - 1
         
         # Calculate the block number across all servers in the strip
         block_number_across_servers = []
@@ -282,7 +282,7 @@ class DiskBlocks():
             virtual_block_number = block_idx * effective_servers + server_number
             
             # Adjust server number based on parity
-            parity_server_number = effective_servers - (block_idx % fsconfig.MAX_SERVERS)
+            parity_server_number = effective_servers - (block_idx % config.MAX_SERVERS)
             if parity_server_number <= server_number:
                 server_number = server_number - 1 if server_number > 0 else effective_servers - 1
             
@@ -293,13 +293,13 @@ class DiskBlocks():
 
     def MapVirtualBlockToPhysicalAddress(self, virtual_block_number):
         logging.debug('Process Virtual Block Number: ' + str(virtual_block_number))
-        if (virtual_block_number < 0 or virtual_block_number > fsconfig.TOTAL_NUM_BLOCKS):
+        if (virtual_block_number < 0 or virtual_block_number > config.TOTAL_NUM_BLOCKS):
             print('block number is out of bounds')
             quit()
         # number of data servers = #total_servers - #parity_servers
-        effective_servers = fsconfig.MAX_SERVERS - 1
+        effective_servers = config.MAX_SERVERS - 1
         block_idx = virtual_block_number // effective_servers
-        parity_server_number = effective_servers - (block_idx % fsconfig.MAX_SERVERS)
+        parity_server_number = effective_servers - (block_idx % config.MAX_SERVERS)
         server_number = virtual_block_number % effective_servers
         if parity_server_number <= server_number:
             server_number = server_number + 1
@@ -311,14 +311,14 @@ class DiskBlocks():
         logging.debug('Process Physical Address: Server Number - ' + str(server_number) + ', Block Index - ' + str(block_idx))
         
         # number of data servers = #total_servers - #parity_servers
-        effective_servers = fsconfig.MAX_SERVERS - 1
+        effective_servers = config.MAX_SERVERS - 1
         
         # Calculate the virtual block number
         block_idx *= effective_servers
         server_number %= effective_servers
         
         # Adjust server number based on parity
-        parity_server_number = effective_servers - (block_idx % fsconfig.MAX_SERVERS)
+        parity_server_number = effective_servers - (block_idx % config.MAX_SERVERS)
         if parity_server_number <= server_number:
             server_number = server_number - 1 if server_number > 0 else effective_servers - 1
         
@@ -371,7 +371,7 @@ class DiskBlocks():
             # recover parity block
             old_parity = self.RecoverParityBlock(block_idx) 
         
-        if old_data != bytearray(b'\x00' * fsconfig.BLOCK_SIZE) and old_parity != bytearray(b'\x00' * fsconfig.BLOCK_SIZE):
+        if old_data != bytearray(b'\x00' * config.BLOCK_SIZE) and old_parity != bytearray(b'\x00' * config.BLOCK_SIZE):
             logging.debug('Parity: Update')
             data = [old_data, new_data, old_parity]
         else:
@@ -438,7 +438,7 @@ class DiskBlocks():
         logging.debug('REPAIR: Server ID: ' + str(server_id))
 
         # virtual to physical will skip the parity servers while mapping virtual block numbers
-        parity_block_physical_ids = [fsconfig.MAX_SERVERS - int(server_id) - 1 + idx * 4 for idx in range(0, 64)]
+        parity_block_physical_ids = [config.MAX_SERVERS - int(server_id) - 1 + idx * 4 for idx in range(0, 64)]
         logging.debug('Failed Parity Blocks Indices: ' + str(parity_block_physical_ids))
         
         data_block_physical_ids = [idx for idx in range(0, 192) if idx not in parity_block_physical_ids]

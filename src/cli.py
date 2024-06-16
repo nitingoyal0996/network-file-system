@@ -1,4 +1,4 @@
-import fsconfig
+import config
 import os.path
 
 from block import *
@@ -22,7 +22,7 @@ class FSShell():
     # block-layer inspection, load/save, and debugging shell commands
     # implements showfsconfig (log fs config contents)
     def showfsconfig(self):
-        fsconfig.PrintFSConstants()
+        config.PrintFSConstants()
         return 0
 
     # implements showinode (log inode i contents)
@@ -33,8 +33,8 @@ class FSShell():
             print('Error: ' + i + ' not a valid Integer')
             return -1
 
-        if i < 0 or i >= fsconfig.MAX_NUM_INODES:
-            print('Error: inode number ' + str(i) + ' not in valid range [0, ' + str(fsconfig.MAX_NUM_INODES - 1) + ']')
+        if i < 0 or i >= config.MAX_NUM_INODES:
+            print('Error: inode number ' + str(i) + ' not in valid range [0, ' + str(config.MAX_NUM_INODES - 1) + ']')
             return -1
         inobj = InodeNumber(i)
         inobj.InodeNumberToInode(self.RawBlocks)
@@ -63,8 +63,8 @@ class FSShell():
         except ValueError:
             print('Error: ' + n + ' not a valid Integer')
             return -1
-        if n < 0 or n >= fsconfig.TOTAL_NUM_BLOCKS:
-            print('Error: block number ' + str(n) + ' not in valid range [0, ' + str(fsconfig.TOTAL_NUM_BLOCKS - 1) + ']')
+        if n < 0 or n >= config.TOTAL_NUM_BLOCKS:
+            print('Error: block number ' + str(n) + ' not in valid range [0, ' + str(config.TOTAL_NUM_BLOCKS - 1) + ']')
             return -1
         print('Block (showing any string snippets in block the block) [' + str(n) + '] : \n' + str(
             (self.RawBlocks.Get(n).decode(encoding='UTF-8', errors='ignore'))))
@@ -78,8 +78,8 @@ class FSShell():
         except ValueError:
             print('Error: ' + n + ' not a valid Integer')
             return -1
-        if n < 0 or n >= fsconfig.TOTAL_NUM_BLOCKS:
-            print('Error: block number ' + str(n) + ' not in valid range [0, ' + str(fsconfig.TOTAL_NUM_BLOCKS - 1) + ']')
+        if n < 0 or n >= config.TOTAL_NUM_BLOCKS:
+            print('Error: block number ' + str(n) + ' not in valid range [0, ' + str(config.TOTAL_NUM_BLOCKS - 1) + ']')
             return -1
         data = self.RawBlocks.SingleGet(sid, n)[0]
         print(data)
@@ -106,14 +106,14 @@ class FSShell():
             print('Error: ' + end + ' not a valid Integer')
             return -1
 
-        if n < 0 or n >= fsconfig.TOTAL_NUM_BLOCKS:
-            print('Error: block number ' + str(n) + ' not in valid range [0, ' + str(fsconfig.TOTAL_NUM_BLOCKS - 1) + ']')
+        if n < 0 or n >= config.TOTAL_NUM_BLOCKS:
+            print('Error: block number ' + str(n) + ' not in valid range [0, ' + str(config.TOTAL_NUM_BLOCKS - 1) + ']')
             return -1
-        if start < 0 or start >= fsconfig.BLOCK_SIZE:
-            print('Error: start ' + str(start) + 'not in valid range [0, ' + str(fsconfig.BLOCK_SIZE - 1) + ']')
+        if start < 0 or start >= config.BLOCK_SIZE:
+            print('Error: start ' + str(start) + 'not in valid range [0, ' + str(config.BLOCK_SIZE - 1) + ']')
             return -1
-        if end < 0 or end >= fsconfig.BLOCK_SIZE or end <= start:
-            print('Error: end ' + str(end) + 'not in valid range [0, ' + str(fsconfig.BLOCK_SIZE - 1) + ']')
+        if end < 0 or end >= config.BLOCK_SIZE or end <= start:
+            print('Error: end ' + str(end) + 'not in valid range [0, ' + str(config.BLOCK_SIZE - 1) + ']')
             return -1
 
         wholeblock = self.RawBlocks.Get(n)
@@ -129,7 +129,7 @@ class FSShell():
             return -1
         inobj = InodeNumber(i)
         inobj.InodeNumberToInode(self.RawBlocks)
-        if inobj.inode.type != fsconfig.INODE_TYPE_DIR:
+        if inobj.inode.type != config.INODE_TYPE_DIR:
             print("Error: not a directory\n")
             return -1
         self.cwd = i
@@ -139,30 +139,30 @@ class FSShell():
         inobj = InodeNumber(self.cwd)
         inobj.InodeNumberToInode(self.RawBlocks)
         block_index = 0
-        while block_index <= (inobj.inode.size // fsconfig.BLOCK_SIZE):
+        while block_index <= (inobj.inode.size // config.BLOCK_SIZE):
             block = self.RawBlocks.Get(inobj.inode.block_numbers[block_index])
-            if block_index == (inobj.inode.size // fsconfig.BLOCK_SIZE):
-                end_position = inobj.inode.size % fsconfig.BLOCK_SIZE
+            if block_index == (inobj.inode.size // config.BLOCK_SIZE):
+                end_position = inobj.inode.size % config.BLOCK_SIZE
             else:
-                end_position = fsconfig.BLOCK_SIZE
+                end_position = config.BLOCK_SIZE
             current_position = 0
             while current_position < end_position:
-                entryname = block[current_position:current_position + fsconfig.MAX_FILENAME]
-                entryinode = block[current_position + fsconfig.MAX_FILENAME:current_position + fsconfig.FILE_NAME_DIRENTRY_SIZE]
+                entryname = block[current_position:current_position + config.MAX_FILENAME]
+                entryinode = block[current_position + config.MAX_FILENAME:current_position + config.FILE_NAME_DIRENTRY_SIZE]
                 entryinodenumber = int.from_bytes(entryinode, byteorder='big')
                 inobj2 = InodeNumber(entryinodenumber)
                 inobj2.InodeNumberToInode(self.RawBlocks)
-                if inobj2.inode.type == fsconfig.INODE_TYPE_DIR:
+                if inobj2.inode.type == config.INODE_TYPE_DIR:
                     print("[" + str(inobj2.inode.refcnt) + "]:" + entryname.decode() + "/")
                 else:
-                    if inobj2.inode.type == fsconfig.INODE_TYPE_SYM:
+                    if inobj2.inode.type == config.INODE_TYPE_SYM:
                         target_block_number = inobj2.inode.block_numbers[0]
                         target_block = self.RawBlocks.Get(target_block_number)
                         target_slice = target_block[0:inobj2.inode.size]
                         print("[" + str(inobj2.inode.refcnt) + "]:" + entryname.decode() + "@ -> " + target_slice.decode())
                     else:
                         print("[" + str(inobj2.inode.refcnt) + "]:" + entryname.decode())
-                current_position += fsconfig.FILE_NAME_DIRENTRY_SIZE
+                current_position += config.FILE_NAME_DIRENTRY_SIZE
             block_index += 1
         return 0
 
@@ -174,10 +174,10 @@ class FSShell():
             return -1
         inobj = InodeNumber(i)
         inobj.InodeNumberToInode(self.RawBlocks)
-        if inobj.inode.type != fsconfig.INODE_TYPE_FILE:
+        if inobj.inode.type != config.INODE_TYPE_FILE:
             print("Error: not a file\n")
             return -1
-        data, errorcode = self.FileOperationsObject.Read(i, 0, fsconfig.MAX_FILE_SIZE)
+        data, errorcode = self.FileOperationsObject.Read(i, 0, config.MAX_FILE_SIZE)
         if data == -1:
             print("Error: " + errorcode)
             return -1
@@ -186,7 +186,7 @@ class FSShell():
 
     # implements mkdir
     def mkdir(self, dir):
-        i, errorcode = self.FileOperationsObject.Create(self.cwd, dir, fsconfig.INODE_TYPE_DIR)
+        i, errorcode = self.FileOperationsObject.Create(self.cwd, dir, config.INODE_TYPE_DIR)
         if i == -1:
             print("Error: " + errorcode + "\n")
             return -1
@@ -194,7 +194,7 @@ class FSShell():
 
     # implements create
     def create(self, file):
-        i, errorcode = self.FileOperationsObject.Create(self.cwd, file, fsconfig.INODE_TYPE_FILE)
+        i, errorcode = self.FileOperationsObject.Create(self.cwd, file, config.INODE_TYPE_FILE)
         if i == -1:
             print("Error: " + errorcode + "\n")
             return -1
@@ -208,7 +208,7 @@ class FSShell():
             return -1
         inobj = InodeNumber(i)
         inobj.InodeNumberToInode(self.RawBlocks)
-        if inobj.inode.type != fsconfig.INODE_TYPE_FILE:
+        if inobj.inode.type != config.INODE_TYPE_FILE:
             print("Error: not a file\n")
             return -1
         written, errorcode = self.FileOperationsObject.Write(i, inobj.inode.size, bytearray(string, "utf-8"))
@@ -236,7 +236,7 @@ class FSShell():
             return -1
         inobj = InodeNumber(i)
         inobj.InodeNumberToInode(self.RawBlocks)
-        if inobj.inode.type != fsconfig.INODE_TYPE_FILE:
+        if inobj.inode.type != config.INODE_TYPE_FILE:
             print("Error: not a file\n")
             return -1
         data, errorcode = self.FileOperationsObject.Slice(i, offset, count)
@@ -253,7 +253,7 @@ class FSShell():
             return -1
         inobj = InodeNumber(i)
         inobj.InodeNumberToInode(self.RawBlocks)
-        if inobj.inode.type != fsconfig.INODE_TYPE_FILE:
+        if inobj.inode.type != config.INODE_TYPE_FILE:
             print("Error: not a file\n")
             return -1
         data, errorcode = self.FileOperationsObject.Mirror(i)

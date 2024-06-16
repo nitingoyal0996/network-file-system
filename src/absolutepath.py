@@ -1,4 +1,4 @@
-import fsconfig
+import config
 import logging
 from block import *
 from inode import *
@@ -55,7 +55,7 @@ class AbsolutePathName():
     lookedup_inode = InodeNumber(i)
     lookedup_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
 
-    if lookedup_inode.inode.type == fsconfig.INODE_TYPE_SYM:
+    if lookedup_inode.inode.type == config.INODE_TYPE_SYM:
       logging.debug ("AbsolutePathName::PathNameToInodeNumber: inode is symlink: " + str(i))
       # read block with target string from RawBlocks
       block_number = lookedup_inode.inode.block_numbers[0]
@@ -80,7 +80,7 @@ class AbsolutePathName():
 
     cwd_inode = InodeNumber(cwd)
     cwd_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
-    if cwd_inode.inode.type != fsconfig.INODE_TYPE_DIR:
+    if cwd_inode.inode.type != config.INODE_TYPE_DIR:
       logging.debug ("AbsolutePathName::Link: cwd is not a directory")
       return -1, "ERROR_LINK_NOT_DIRECTORY"
 
@@ -98,7 +98,7 @@ class AbsolutePathName():
     # Ensure target is a file
     target_obj = InodeNumber(target_inode_number)
     target_obj.InodeNumberToInode(self.FileNameObject.RawBlocks)
-    if target_obj.inode.type != fsconfig.INODE_TYPE_FILE:
+    if target_obj.inode.type != config.INODE_TYPE_FILE:
       logging.debug ("AbsolutePathName::Link: target must be a file")
       return -1, "ERROR_LINK_TARGET_NOT_FILE"
 
@@ -128,7 +128,7 @@ class AbsolutePathName():
 
     cwd_inode = InodeNumber(cwd)
     cwd_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
-    if cwd_inode.inode.type != fsconfig.INODE_TYPE_DIR:
+    if cwd_inode.inode.type != config.INODE_TYPE_DIR:
       logging.debug ("AbsolutePathName::Symlink: cwd is not a directory")
       return -1, "ERROR_SYMLINK_NOT_DIRECTORY"
 
@@ -150,14 +150,14 @@ class AbsolutePathName():
       return -1, "ERROR_SYMLINK_INODE_NOT_AVAILABLE"
 
     # ensure target size fits in a block
-    if len(target) > fsconfig.BLOCK_SIZE:
+    if len(target) > config.BLOCK_SIZE:
       logging.debug ("ERROR_SYMLINK_TARGET_EXCEEDS_BLOCK_SIZE ")
       return -1, "ERROR_SYMLINK_TARGET_EXCEEDS_BLOCK_SIZE"
 
     # Create new Inode for symlink
     symlink_inode = InodeNumber(inode_position)
     symlink_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
-    symlink_inode.inode.type = fsconfig.INODE_TYPE_SYM
+    symlink_inode.inode.type = config.INODE_TYPE_SYM
     symlink_inode.inode.size = len(target)
     symlink_inode.inode.refcnt = 1
 
