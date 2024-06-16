@@ -1,4 +1,4 @@
-import fsconfig
+import config
 import logging
 
 #### INODE LAYER
@@ -18,14 +18,14 @@ class Inode():
     def __init__(self):
 
         # an inode is initialized empty: invalid, zero size, no block numbers
-        self.type = fsconfig.INODE_TYPE_INVALID
+        self.type = config.INODE_TYPE_INVALID
         self.size = 0
         self.refcnt = 0
         # We store inode block_numbers as a list
         self.block_numbers = []
 
         # initialize list with zeroes
-        for i in range(0,fsconfig.MAX_INODE_BLOCK_NUMBERS):
+        for i in range(0,config.MAX_INODE_BLOCK_NUMBERS):
             self.block_numbers.append(0)
 
 
@@ -34,7 +34,7 @@ class Inode():
 
     def InodeFromBytearray(self,b):
 
-        if len(b) > fsconfig.INODE_SIZE:
+        if len(b) > config.INODE_SIZE:
             logging.error ('InodeFromBytearray: exceeds inode size ' + str(b))
             quit()
 
@@ -53,7 +53,7 @@ class Inode():
 
         # each block number entry is INODE_BYTES_STORE_BLOCK_NUMBER bytes, big-endian
         # scan through the max number of blocks an inode can hold
-        for i in range(0,fsconfig.MAX_INODE_BLOCK_NUMBERS):
+        for i in range(0,config.MAX_INODE_BLOCK_NUMBERS):
             # the starting point is offset by INODE_BYTES_SIZE_TYPE_REFCNT=8
             start = 8 + i*4
             # pull a slice of only INODE_BYTES_STORE_BLOCK_NUMBER=4 bytes
@@ -68,7 +68,7 @@ class Inode():
     def InodeToBytearray(self):
 
         # Temporary bytearray - we'll load it with the different inode fields
-        temparray = bytearray(fsconfig.INODE_SIZE)
+        temparray = bytearray(config.INODE_SIZE)
 
         # We assume size is 4 bytes, and we store it in Big Endian format
         intsize = self.size
@@ -83,7 +83,7 @@ class Inode():
         temparray[6:8] = intrefcnt.to_bytes(2, 'big')
 
         # We assume each block number is INODE_BYTES_STORE_BLOCK_NUMBER=4 bytes, and we store each in Big Endian format
-        for i in range(0,fsconfig.MAX_INODE_BLOCK_NUMBERS):
+        for i in range(0,config.MAX_INODE_BLOCK_NUMBERS):
             start = 8 + i*4
             intbn = self.block_numbers[i]
             temparray[start:start+4] = intbn.to_bytes(4, 'big')
@@ -100,7 +100,7 @@ class Inode():
         logging.info ('Inode refcnt : ' + str(self.refcnt))
         logging.info ('Block numbers: ')
         s = ""
-        for i in range(0,fsconfig.MAX_INODE_BLOCK_NUMBERS):
+        for i in range(0,config.MAX_INODE_BLOCK_NUMBERS):
             s += str(self.block_numbers[i])
             s += ","
         logging.info (s)

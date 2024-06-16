@@ -1,7 +1,7 @@
 import pickle, logging
 import argparse
 import time
-import fsconfig
+import config
 import hashlib
 
 from xmlrpc.server import SimpleXMLRPCServer

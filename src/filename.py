@@ -1,4 +1,4 @@
-import fsconfig
+import config
 import logging
 from block import *
 from inode import *
@@ -21,8 +21,8 @@ class FileName():
         logging.debug('FileName::HelperGetFilenameString: ' + str(block.hex()) + ', ' + str(index))
 
         # Locate bytes that store string - first MAX_FILENAME characters aligned by MAX_FILENAME + INODE_NUMBER_DIRENTRY_SIZE
-        string_start = index * fsconfig.FILE_NAME_DIRENTRY_SIZE
-        string_end = string_start + fsconfig.MAX_FILENAME
+        string_start = index * config.FILE_NAME_DIRENTRY_SIZE
+        string_end = string_start + config.MAX_FILENAME
         return block[string_start:string_end]
 
 
@@ -33,8 +33,8 @@ class FileName():
         logging.debug('FileName::HelperGetFilenameInodeNumber: ' + str(block.hex()) + ', ' + str(index))
 
         # Locate bytes that store inode
-        inode_start = (index * fsconfig.FILE_NAME_DIRENTRY_SIZE) + fsconfig.MAX_FILENAME
-        inode_end = inode_start + fsconfig.INODE_NUMBER_DIRENTRY_SIZE
+        inode_start = (index * config.FILE_NAME_DIRENTRY_SIZE) + config.MAX_FILENAME
+        inode_end = inode_start + config.INODE_NUMBER_DIRENTRY_SIZE
         inodenumber_slice = block[inode_start:inode_end]
         # convert from a byte slice to an integer; we use big-endian encoding
         return int.from_bytes(inodenumber_slice, byteorder='big')
@@ -46,12 +46,12 @@ class FileName():
 
         logging.debug('FileName::FindAvailableInode: ')
 
-        for i in range(0, fsconfig.MAX_NUM_INODES):
+        for i in range(0, config.MAX_NUM_INODES):
             # Initialize inode_number object from raw storage
             inode_number = InodeNumber(i)
             inode_number.InodeNumberToInode(self.RawBlocks)
             # the integer inode number of first INVALID inode found is returned
-            if inode_number.inode.type == fsconfig.INODE_TYPE_INVALID:
+            if inode_number.inode.type == config.INODE_TYPE_INVALID:
                 logging.debug("FileName::FindAvailableInode: " + str(i))
                 return i
 
@@ -70,7 +70,7 @@ class FileName():
 
         # Check if there is still room for another (filename,inode) entry
         # the inode cannot exceed maximum size
-        if inode_number.inode.size >= fsconfig.MAX_FILE_SIZE:
+        if inode_number.inode.size >= config.MAX_FILE_SIZE:
             logging.debug("FileName::FindAvailableFileEntry: no entries available")
             return -1
 
@@ -85,19 +85,19 @@ class FileName():
         logging.debug('FileName::AllocateDataBlock: ')
 
         # Scan through all available data blocks in the free bitmap to see if there's any free ones
-        for block_number in range(fsconfig.DATA_BLOCKS_OFFSET, fsconfig.TOTAL_NUM_BLOCKS):
+        for block_number in range(config.DATA_BLOCKS_OFFSET, config.TOTAL_NUM_BLOCKS):
 
             # GET() raw block that stores the bitmap entry for block_number
-            bitmap_block = fsconfig.FREEBITMAP_BLOCK_OFFSET + (block_number // fsconfig.BLOCK_SIZE)
+            bitmap_block = config.FREEBITMAP_BLOCK_OFFSET + (block_number // config.BLOCK_SIZE)
             block = self.RawBlocks.Get(bitmap_block)
 
             # Locate the proper byte the refers to block_number within the free bitmap block
-            byte_bitmap = block[block_number % fsconfig.BLOCK_SIZE]
+            byte_bitmap = block[block_number % config.BLOCK_SIZE]
 
             # Data block block_number is free
             if byte_bitmap == 0:
                 # Mark it as used in bitmap
-                block[block_number % fsconfig.BLOCK_SIZE] = 1
+                block[block_number % config.BLOCK_SIZE] = 1
                 # Write it back to the free bitmap in raw storage
                 self.RawBlocks.Put(bitmap_block, block)
                 logging.debug('FileName::AllocateDataBlock: allocated ' + str(block_number))
@@ -117,11 +117,11 @@ class FileName():
         logging.debug('FileName::InsertFilenameInodeNumber: ' + str(filename) + ', ' + str(inodenumber))
 
         # bound and type checks first
-        if len(filename) > fsconfig.MAX_FILENAME:
+        if len(filename) > config.MAX_FILENAME:
             logging.error('FileName::InsertFilenameInodeNumber: file name exceeds maximum')
             quit()
 
-        if insert_to.inode.type != fsconfig.INODE_TYPE_DIR:
+        if insert_to.inode.type != config.INODE_TYPE_DIR:
             logging.error('FileName::InsertFilenameInodeNumber: not a directory inode: ' + str(insert_to.inode.type))
             quit()
 
@@ -129,16 +129,16 @@ class FileName():
         # So we first need to determine this position based on the directory inode's size
         index = insert_to.inode.size
         # If there's no space for another entry in the directory, we abort
-        # Note that a directory or file can be at most fsconfig.MAX_FILE_SIZE bytes
-        if index >= fsconfig.MAX_FILE_SIZE:
+        # Note that a directory or file can be at most config.MAX_FILE_SIZE bytes
+        if index >= config.MAX_FILE_SIZE:
             logging.error('FileName::InsertFilenameInodeNumber: no space for another entry in inode')
             quit()
 
         # Check if we need to allocate another data block for this inode
         # this happens when the index spills over to the next block
         # first, find the block number index for the directory's inode
-        block_number_index = index // fsconfig.BLOCK_SIZE
-        if index % fsconfig.BLOCK_SIZE == 0:
+        block_number_index = index // config.BLOCK_SIZE
+        if index % config.BLOCK_SIZE == 0:
             # index == 0 is a special case as an inode is initialized with one data block; so no need to allocate
             if index != 0:
                 # Allocate the data block to store this binding
@@ -152,19 +152,19 @@ class FileName():
         block = self.RawBlocks.Get(block_number)
 
         # Compute modulo of index to locate within this data block where the new entry should be added
-        index_modulo = index % fsconfig.BLOCK_SIZE
+        index_modulo = index % config.BLOCK_SIZE
 
         # the entry to insert has two components: the file name string, and the inode number
         # we need byte slices for both
         # Now compute the byte slice holding the stirng file name with MAX_FILENAME size
         string_start = index_modulo
-        string_end = string_start + fsconfig.MAX_FILENAME
+        string_end = string_start + config.MAX_FILENAME
         # convert file name to bytearray to insert the slice in block
         stringbyte = bytearray(filename, "utf-8")
 
         # Now compute the byte slice holding the inode number with INODE_NUMBER_DIRENTRY_SIZE size
-        inode_start = index_modulo + fsconfig.MAX_FILENAME
-        inode_end = inode_start + fsconfig.INODE_NUMBER_DIRENTRY_SIZE
+        inode_start = index_modulo + config.MAX_FILENAME
+        inode_end = inode_start + config.INODE_NUMBER_DIRENTRY_SIZE
 
         logging.debug('FileName::InsertFilenameInodeNumber: block read \n' + str(block.hex()))
         logging.debug('FileName::InsertFilenameInodeNumber: string_start ' + str(string_start) + ', string_end ' + str(string_end))
@@ -172,15 +172,15 @@ class FileName():
 
         # Update and write data block with (filename,inode) mapping
         # pad the bytearray representation of the string with zeroes if the filename is smaller than MAX_FILENAME
-        block[string_start:string_end] = bytearray(stringbyte.ljust(fsconfig.MAX_FILENAME, b'\x00'))
-        block[inode_start:inode_end] = inodenumber.to_bytes(fsconfig.INODE_NUMBER_DIRENTRY_SIZE, 'big')
+        block[string_start:string_end] = bytearray(stringbyte.ljust(config.MAX_FILENAME, b'\x00'))
+        block[inode_start:inode_end] = inodenumber.to_bytes(config.INODE_NUMBER_DIRENTRY_SIZE, 'big')
         # Write the updated block to raw block storage
         self.RawBlocks.Put(block_number, block)
 
         # Now update the inode of the directory - need to increment its size
         # Increment size to reflect that a new entry has been appended
         logging.debug('FileName::InsertFilenameInodeNumber: insert_to.inode.size ' + str(insert_to.inode.size))
-        insert_to.inode.size += fsconfig.FILE_NAME_DIRENTRY_SIZE
+        insert_to.inode.size += config.FILE_NAME_DIRENTRY_SIZE
         # Write updated inode back to inode table in raw block storage
         insert_to.StoreInode(self.RawBlocks)
 
@@ -195,7 +195,7 @@ class FileName():
         # Root inode has well-known value 0; create an InodeNumber object
         root_inode = InodeNumber(0)
         root_inode.InodeNumberToInode(self.RawBlocks)
-        root_inode.inode.type = fsconfig.INODE_TYPE_DIR
+        root_inode.inode.type = config.INODE_TYPE_DIR
         root_inode.inode.size = 0
         root_inode.inode.refcnt = 1
         # Allocate one data block and set as first entry in block_numbers[]
@@ -220,7 +220,7 @@ class FileName():
         inode_number = InodeNumber(dir)
         inode_number.InodeNumberToInode(self.RawBlocks)
 
-        if inode_number.inode.type != fsconfig.INODE_TYPE_DIR:
+        if inode_number.inode.type != config.INODE_TYPE_DIR:
             logging.error("FileName::Lookup: not a directory inode: " + str(dir) + " , " + str(inode_number.inode.type))
             return -1
 
@@ -234,17 +234,17 @@ class FileName():
 
             # A directory data block has multiple (filename,inode) entries
             # Iterate over file entries to search for matches
-            for i in range(0, fsconfig.FILE_ENTRIES_PER_DATA_BLOCK):
+            for i in range(0, config.FILE_ENTRIES_PER_DATA_BLOCK):
                 # don't search beyond bounds (the size of the directory)
                 if inode_number.inode.size > scanned:
-                    scanned += fsconfig.FILE_NAME_DIRENTRY_SIZE
+                    scanned += config.FILE_NAME_DIRENTRY_SIZE
 
                     # Extract padded MAX_FILENAME string as a bytearray from data block for comparison
                     filestring = self.HelperGetFilenameString(b, i)
                     logging.debug("FileName::Lookup for " + filename + " in " + str(dir) + ": searching string " + str(filestring))
                     # Pad filename with zeroes and make it a byte array
                     padded_filename = bytearray(filename, "utf-8")
-                    padded_filename = bytearray(padded_filename.ljust(fsconfig.MAX_FILENAME, b'\x00'))
+                    padded_filename = bytearray(padded_filename.ljust(config.MAX_FILENAME, b'\x00'))
 
                     # these are now two byte arrays of the same MAX_FILENAME size, ready for simple == comparison
                     if filestring == padded_filename:
@@ -254,7 +254,7 @@ class FileName():
                         return fileinode
 
             # Skip to the search on next block, and back to while loop
-            offset += fsconfig.BLOCK_SIZE
+            offset += config.BLOCK_SIZE
 
         logging.debug("FileName::Lookup: file not found: " + str(filename) + " in " + str(dir))
         return -1

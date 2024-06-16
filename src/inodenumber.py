@@ -1,4 +1,4 @@
-import fsconfig
+import config
 import logging
 from block import *
 from inode import *
@@ -13,7 +13,7 @@ class InodeNumber():
         self.inode = Inode()
 
         # This stores the inode number
-        if number > fsconfig.MAX_NUM_INODES:
+        if number > config.MAX_NUM_INODES:
             logging.error ('InodeNumber::Init: inode number exceeds limit: ' + str(number))
             quit()
         self.inode_number = number
@@ -28,14 +28,14 @@ class InodeNumber():
         logging.debug('InodeNumber::InodeNumberToInode: ' + str(self.inode_number))
 
         # locate which block (in the inode table) has the inode we want
-        inode_table_raw_block_number = fsconfig.INODE_BLOCK_OFFSET + ((self.inode_number * fsconfig.INODE_SIZE) // fsconfig.BLOCK_SIZE)
+        inode_table_raw_block_number = config.INODE_BLOCK_OFFSET + ((self.inode_number * config.INODE_SIZE) // config.BLOCK_SIZE)
 
         # Read (Get) the entire block that contains inode from raw storage
         inode_table_raw_block = RawBlocks.Get(inode_table_raw_block_number)
 
         # Find the byte slice start:end within the block to select this particular inode_number
-        start = (self.inode_number * fsconfig.INODE_SIZE) % fsconfig.BLOCK_SIZE
-        end = start + fsconfig.INODE_SIZE
+        start = (self.inode_number * config.INODE_SIZE) % config.BLOCK_SIZE
+        end = start + config.INODE_SIZE
 
         # extract byte array for this inode
         inode_slice = inode_table_raw_block[start:end]
@@ -55,7 +55,7 @@ class InodeNumber():
         logging.debug('InodeNumber::StoreInode: ' + str(self.inode_number))
 
         # locate which block has the inode we want
-        inode_table_raw_block_number = fsconfig.INODE_BLOCK_OFFSET + ((self.inode_number * fsconfig.INODE_SIZE) // fsconfig.BLOCK_SIZE)
+        inode_table_raw_block_number = config.INODE_BLOCK_OFFSET + ((self.inode_number * config.INODE_SIZE) // config.BLOCK_SIZE)
         logging.debug('InodeNumber::StoreInode: inode_table_raw_block_number ' + str(inode_table_raw_block_number))
 
         # Get the entire block containing inode from raw storage
@@ -63,8 +63,8 @@ class InodeNumber():
         logging.debug('InodeNumber::StoreInode: inode_table_raw_block:\n' + str(inode_table_raw_block.hex()))
 
         # Find the start:end byte slice of the block retrieved from the inode table for this particular inode_number
-        start = (self.inode_number * fsconfig.INODE_SIZE) % fsconfig.BLOCK_SIZE
-        end = start + fsconfig.INODE_SIZE
+        start = (self.inode_number * config.INODE_SIZE) % config.BLOCK_SIZE
+        end = start + config.INODE_SIZE
         logging.debug('InodeNumber::StoreInode: start: ' + str(start) + ', end: ' + str(end))
 
         # serialize inode into byte array
@@ -89,7 +89,7 @@ class InodeNumber():
         self.InodeNumberToInode(RawBlocks)
 
         # Calculate offset
-        o = offset // fsconfig.BLOCK_SIZE
+        o = offset // config.BLOCK_SIZE
 
         # Retrieve block indexed by offset
         # as in the textbook's INDEX_TO_BLOCK_NUMBER - here self.inode is equivalent to the book's i

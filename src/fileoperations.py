@@ -1,4 +1,4 @@
-import fsconfig
+import config
 import logging
 from block import *
 from inode import *
@@ -21,7 +21,7 @@ class FileOperations():
         logging.debug("FileOperations::Create: dir: " + str(dir) + ", name: " + str(name) + ", type: " + str(type))
 
         # Ensure type is valid, otherwise return
-        if not (type == fsconfig.INODE_TYPE_FILE or type == fsconfig.INODE_TYPE_DIR):
+        if not (type == config.INODE_TYPE_FILE or type == config.INODE_TYPE_DIR):
             logging.debug("ERROR_CREATE_INVALID_TYPE " + str(type))
             return -1, "ERROR_CREATE_INVALID_TYPE"
 
@@ -34,7 +34,7 @@ class FileOperations():
         # Obtain dir_inode_number_inode, ensure it is a directory
         dir_inode = InodeNumber(dir)
         dir_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
-        if dir_inode.inode.type != fsconfig.INODE_TYPE_DIR:
+        if dir_inode.inode.type != config.INODE_TYPE_DIR:
             logging.debug("ERROR_CREATE_INVALID_DIR " + str(dir))
             return -1, "ERROR_CREATE_INVALID_DIR"
 
@@ -51,12 +51,12 @@ class FileOperations():
 
         logging.debug("FileOperations::Create: inode_position: " + str(inode_position) + ", fileentry_position: " + str(fileentry_position))
 
-        if type == fsconfig.INODE_TYPE_DIR:
+        if type == config.INODE_TYPE_DIR:
             # We're creating a new directory (e.g. mkdir)
             # First, create an appropriate inode object in memory for this new directory we're creating
             newdir_inode = InodeNumber(inode_position)
             newdir_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
-            newdir_inode.inode.type = fsconfig.INODE_TYPE_DIR
+            newdir_inode.inode.type = config.INODE_TYPE_DIR
             # it starts with size 0 and refcnt 1
             newdir_inode.inode.size = 0
             newdir_inode.inode.refcnt = 1
@@ -80,12 +80,12 @@ class FileOperations():
             dir_inode.inode.refcnt += 1
             dir_inode.StoreInode(self.FileNameObject.RawBlocks)
 
-        elif type == fsconfig.INODE_TYPE_FILE:
+        elif type == config.INODE_TYPE_FILE:
             # we're creating a regular file here (e.g. create)
             # First, create an appropriate inode object in memory for this new directory we're creating
             newfile_inode = InodeNumber(inode_position)
             newfile_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
-            newfile_inode.inode.type = fsconfig.INODE_TYPE_FILE
+            newfile_inode.inode.type = config.INODE_TYPE_FILE
             newfile_inode.inode.size = 0
             newfile_inode.inode.refcnt = 1
             # Unlike DIRs, for FILES they are not allocated a block upon creatin; these are allocated on a Write()
@@ -119,7 +119,7 @@ class FileOperations():
         file_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
 
         # perform checks on type and bounds
-        if file_inode.inode.type != fsconfig.INODE_TYPE_FILE:
+        if file_inode.inode.type != config.INODE_TYPE_FILE:
             logging.debug("ERROR_WRITE_NOT_FILE " + str(file_inode_number))
             return -1, "ERROR_WRITE_NOT_FILE"
 
@@ -127,7 +127,7 @@ class FileOperations():
             logging.debug("ERROR_WRITE_OFFSET_LARGER_THAN_SIZE " + str(offset))
             return -1, "ERROR_WRITE_OFFSET_LARGER_THAN_SIZE"
 
-        if offset + len(data) > fsconfig.MAX_FILE_SIZE:
+        if offset + len(data) > config.MAX_FILE_SIZE:
             logging.debug("ERROR_WRITE_EXCEEDS_FILE_SIZE " + str(offset + len(data)))
             return -1, "ERROR_WRITE_EXCEEDS_FILE_SIZE"
 
@@ -143,10 +143,10 @@ class FileOperations():
         # this loop iterates through one or more blocks, ending when all data is written
         while bytes_written < len(data):
             # determine block index corresponding to the current offset where the write should take place
-            current_block_index = current_offset // fsconfig.BLOCK_SIZE
+            current_block_index = current_offset // config.BLOCK_SIZE
 
             # determine the next block's boundary (in Bytes relative to the file's offset 0)
-            next_block_boundary = (current_block_index + 1) * fsconfig.BLOCK_SIZE
+            next_block_boundary = (current_block_index + 1) * config.BLOCK_SIZE
 
             logging.debug('FileOperations::Write: current_block_index: ' + str(current_block_index) + ' , next_block_boundary: ' + str(
                 next_block_boundary))
@@ -155,17 +155,17 @@ class FileOperations():
             # we use modulo arithmetic
             # the first time around in the loop, this may not be aligned with block boundary (i.e. 0) depending on offset
             # in subsequent iterations of this loop, it will always be 0
-            write_start = current_offset % fsconfig.BLOCK_SIZE
+            write_start = current_offset % config.BLOCK_SIZE
 
             # determine byte position where the writing ends
             # this may be BLOCK_SIZE if the data yet to be written spills over to the next block
             # or, it may be smaller than BLOCK_SIZE if the data ends in this bloc
             if (offset + len(data)) >= next_block_boundary:
                 # the data length is such that it goes beyond this block, so we're writing this entire block
-                write_end = fsconfig.BLOCK_SIZE
+                write_end = config.BLOCK_SIZE
             else:
                 # otherwise, the data is truncated within this block
-                write_end = (offset + len(data)) % fsconfig.BLOCK_SIZE
+                write_end = (offset + len(data)) % config.BLOCK_SIZE
 
             logging.debug('FileOperations::Write: write_start: ' + str(write_start) + ' , write_end: ' + str(write_end))
 
@@ -216,7 +216,7 @@ class FileOperations():
         file_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
 
         # type and bounds check
-        if file_inode.inode.type != fsconfig.INODE_TYPE_FILE:
+        if file_inode.inode.type != config.INODE_TYPE_FILE:
             logging.debug("ERROR_READ_NOT_FILE " + str(file_inode_number))
             return -1, "ERROR_READ_NOT_FILE"
 
@@ -240,26 +240,26 @@ class FileOperations():
         while bytes_read < bytes_to_read:
 
             # block index corresponding to the current offset
-            current_block_index = current_offset // fsconfig.BLOCK_SIZE
+            current_block_index = current_offset // config.BLOCK_SIZE
 
             # next block's boundary (in Bytes relative to file 0)
-            next_block_boundary = (current_block_index + 1) * fsconfig.BLOCK_SIZE
+            next_block_boundary = (current_block_index + 1) * config.BLOCK_SIZE
 
             logging.debug('FileOperations::Read: current_block_index: ' + str(current_block_index) + ' , next_block_boundary: ' + str(
                 next_block_boundary))
 
-            read_start = current_offset % fsconfig.BLOCK_SIZE
+            read_start = current_offset % config.BLOCK_SIZE
 
             if (offset + bytes_to_read) >= next_block_boundary:
                 # the data length is such that it goes beyond this block, so we're reading this entire block
-                read_end = fsconfig.BLOCK_SIZE
+                read_end = config.BLOCK_SIZE
             else:
                 # otherwise, the data is truncated within this block
-                read_end = (offset + bytes_to_read) % fsconfig.BLOCK_SIZE
+                read_end = (offset + bytes_to_read) % config.BLOCK_SIZE
 
             logging.debug('FileOperations::Read: read_start: ' + str(read_start) + ' , read_end: ' + str(read_end))
 
-         # retrieve index of block to be written from inode's list
+            # retrieve index of block to be written from inode's list
             block_number = file_inode.inode.block_numbers[current_block_index]
 
             # first, we read the whole block from raw storage
@@ -334,65 +334,65 @@ class FileOperations():
         # Obtain dir_inode_number_inode, ensure it is a directory
         dir_inode = InodeNumber(dir)
         dir_inode.InodeNumberToInode(self.FileNameObject.RawBlocks)
-        if dir_inode.inode.type != fsconfig.INODE_TYPE_DIR:
-          logging.debug ("ERROR_UNLINK_INVALID_DIR " + str(dir))
-          return -1, "ERROR_UNLINK_INVALID_DIR"
+        if dir_inode.inode.type != config.INODE_TYPE_DIR:
+            logging.debug ("ERROR_UNLINK_INVALID_DIR " + str(dir))
+            return -1, "ERROR_UNLINK_INVALID_DIR"
 
         # Ensure file exists - if Lookup returns -1 it does not exist
         file_inode = self.FileNameObject.Lookup(name, dir)
         if file_inode == -1:
-          logging.debug ("ERROR_UNLINK_DOESNOT_EXIST " + str(name))
-          return -1, "ERROR_UNLINK_DOESNOT_EXIST"
+            logging.debug ("ERROR_UNLINK_DOESNOT_EXIST " + str(name))
+            return -1, "ERROR_UNLINK_DOESNOT_EXIST"
 
         # Ensure it is a regular file
         file = InodeNumber(file_inode)
         file.InodeNumberToInode(self.FileNameObject.RawBlocks)
-        if file.inode.type != fsconfig.INODE_TYPE_FILE:
-          logging.debug ("ERROR_UNLINK_NOT_FILE " + str(name))
-          return -1, "ERROR_UNLINK_NOT_FILE"
+        if file.inode.type != config.INODE_TYPE_FILE:
+            logging.debug ("ERROR_UNLINK_NOT_FILE " + str(name))
+            return -1, "ERROR_UNLINK_NOT_FILE"
 
         # Step 1: Remove binding of inode in directory
         # We need to search all directory entries until we find a match with inode number
 
         block_index = 0
         # create a temporary directory table, large enough to hold the number of blocks for this directory
-        tempdirtable = bytearray((dir_inode.inode.size // fsconfig.BLOCK_SIZE) * fsconfig.BLOCK_SIZE)
+        tempdirtable = bytearray((dir_inode.inode.size // config.BLOCK_SIZE) * config.BLOCK_SIZE)
         # Scan through all possible blocks in the directory and Get() from raw blocks to build this table
-        while block_index <= (dir_inode.inode.size // fsconfig.BLOCK_SIZE):
-          # Read block from disk
-          tempdirtable[block_index*fsconfig.BLOCK_SIZE:block_index*fsconfig.BLOCK_SIZE+fsconfig.BLOCK_SIZE-1] = self.FileNameObject.RawBlocks.Get(dir_inode.inode.block_numbers[block_index])
-          block_index += 1
+        while block_index <= (dir_inode.inode.size // config.BLOCK_SIZE):
+            # Read block from disk
+            tempdirtable[block_index*config.BLOCK_SIZE:block_index*config.BLOCK_SIZE+config.BLOCK_SIZE-1] = self.FileNameObject.RawBlocks.Get(dir_inode.inode.block_numbers[block_index])
+            block_index += 1
         logging.debug("FileOperations::Unlink: tempdirtable: " + str(tempdirtable.hex()))
         # pad the filename with zeroes for comparison
         padded_filename = bytearray(name, "utf-8")
-        padded_filename = bytearray(padded_filename.ljust(fsconfig.MAX_FILENAME, b'\x00'))
+        padded_filename = bytearray(padded_filename.ljust(config.MAX_FILENAME, b'\x00'))
         # bounds for searching for a match
         current_position = 0
-        end_position = dir_inode.inode.size * fsconfig.FILE_NAME_DIRENTRY_SIZE
+        end_position = dir_inode.inode.size * config.FILE_NAME_DIRENTRY_SIZE
         # Now scan within the block
         while current_position < end_position:
-          # Retrieve bytearray slice with name for this binding
-          entryname = tempdirtable[current_position:current_position+fsconfig.MAX_FILENAME]
-          entryname_padded = bytearray(entryname.ljust(fsconfig.MAX_FILENAME,b'\x00'))
-          if entryname_padded == padded_filename:
-            logging.debug("FileOperations::Unlink: found a match " + str(padded_filename))
-            # found the entry to be removed - inode matches
-            break
-          else:
-            current_position += fsconfig.FILE_NAME_DIRENTRY_SIZE
+            # Retrieve bytearray slice with name for this binding
+            entryname = tempdirtable[current_position:current_position+config.MAX_FILENAME]
+            entryname_padded = bytearray(entryname.ljust(config.MAX_FILENAME,b'\x00'))
+            if entryname_padded == padded_filename:
+                logging.debug("FileOperations::Unlink: found a match " + str(padded_filename))
+                # found the entry to be removed - inode matches
+                break
+            else:
+                current_position += config.FILE_NAME_DIRENTRY_SIZE
         # we'll now shift entries through the end of the directory list here
         while current_position < end_position:
-          tempdirtable[current_position:current_position+fsconfig.FILE_NAME_DIRENTRY_SIZE] = tempdirtable[current_position+fsconfig.FILE_NAME_DIRENTRY_SIZE:current_position + 2*fsconfig.FILE_NAME_DIRENTRY_SIZE]
-          current_position += fsconfig.FILE_NAME_DIRENTRY_SIZE
+            tempdirtable[current_position:current_position+config.FILE_NAME_DIRENTRY_SIZE] = tempdirtable[current_position+config.FILE_NAME_DIRENTRY_SIZE:current_position + 2*config.FILE_NAME_DIRENTRY_SIZE]
+            current_position += config.FILE_NAME_DIRENTRY_SIZE
         # now we save directory table blocks back to disk
         block_index = 0
-        while block_index <= (dir_inode.inode.size // fsconfig.BLOCK_SIZE):
-          logging.debug("FileOperations::Unlink: writing back block_index " + str(block_index))
-          self.FileNameObject.RawBlocks.Put(dir_inode.inode.block_numbers[block_index],tempdirtable[block_index*fsconfig.BLOCK_SIZE:block_index*fsconfig.BLOCK_SIZE+fsconfig.BLOCK_SIZE])
-          block_index += 1
+        while block_index <= (dir_inode.inode.size // config.BLOCK_SIZE):
+            logging.debug("FileOperations::Unlink: writing back block_index " + str(block_index))
+            self.FileNameObject.RawBlocks.Put(dir_inode.inode.block_numbers[block_index],tempdirtable[block_index*config.BLOCK_SIZE:block_index*config.BLOCK_SIZE+config.BLOCK_SIZE])
+            block_index += 1
         # now update size and refcnt of directory inode and commit back to rawblocks
         logging.debug("FileOperations::Unlink: updating dir_inode")
-        dir_inode.inode.size = dir_inode.inode.size - fsconfig.FILE_NAME_DIRENTRY_SIZE
+        dir_inode.inode.size = dir_inode.inode.size - config.FILE_NAME_DIRENTRY_SIZE
         dir_inode.inode.refcnt -= 1
         dir_inode.StoreInode(self.FileNameObject.RawBlocks)
 
@@ -402,29 +402,29 @@ class FileOperations():
 
         # Step 3: if it's the last binding (refcnt==0), Free data block resources, then free inode
         if file.inode.refcnt == 0:
-          logging.debug ("FileOperations::Unlink: last reference; freeing data blocks and inode")
+            logging.debug ("FileOperations::Unlink: last reference; freeing data blocks and inode")
 
-          # Free data blocks one by one by marking them as FREE (0) in the free bitmap
-          # Scan all blocks in inode
-          for i in range(0,fsconfig.MAX_INODE_BLOCK_NUMBERS):
-            block_number = file.inode.block_numbers[i]
-            # if the block is allocated i.e. != 0, free it up in bitmap
-            if block_number != 0:
-              # print ("TBD: free block " + str(block_number))
-              # index bitmap block
-              bitmap_block = fsconfig.FREEBITMAP_BLOCK_OFFSET + (block_number // fsconfig.BLOCK_SIZE)
-              # retrieve bitmap from disk
-              block = self.FileNameObject.RawBlocks.Get(bitmap_block)
-              # Update bitmap entry for block_number to be 0 (free)
-              block[block_number % fsconfig.BLOCK_SIZE] = 0
-              # Write back to disk
-              self.FileNameObject.RawBlocks.Put(bitmap_block,block)
+            # Free data blocks one by one by marking them as FREE (0) in the free bitmap
+            # Scan all blocks in inode
+            for i in range(0,config.MAX_INODE_BLOCK_NUMBERS):
+                block_number = file.inode.block_numbers[i]
+                # if the block is allocated i.e. != 0, free it up in bitmap
+                if block_number != 0:
+                    # print ("TBD: free block " + str(block_number))
+                    # index bitmap block
+                    bitmap_block = config.FREEBITMAP_BLOCK_OFFSET + (block_number // config.BLOCK_SIZE)
+                    # retrieve bitmap from disk
+                    block = self.FileNameObject.RawBlocks.Get(bitmap_block)
+                    # Update bitmap entry for block_number to be 0 (free)
+                    block[block_number % config.BLOCK_SIZE] = 0
+                    # Write back to disk
+                    self.FileNameObject.RawBlocks.Put(bitmap_block,block)
 
-          # Free inode
-          # Create new inode that is blank i.e. invalid for this inode number
-          new_blank_inode = InodeNumber(file_inode)
-          # store blank inode to disk
-          new_blank_inode.StoreInode(self.FileNameObject.RawBlocks)
+            # Free inode
+            # Create new inode that is blank i.e. invalid for this inode number
+            new_blank_inode = InodeNumber(file_inode)
+            # store blank inode to disk
+            new_blank_inode.StoreInode(self.FileNameObject.RawBlocks)
 
         return 0, "SUCCESS"
 # END_REMOVE_TO_DISTRIBUTE
