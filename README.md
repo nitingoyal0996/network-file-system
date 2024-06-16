@@ -12,7 +12,7 @@ In this project implements a distributed file system in `python`. Application ut
 </div>
 
 
-More details about design of RAID5, server fail over, checksums and recovery procedures are provided in the `Report.pdf`.
+More details about design of RAID5, server fail over, checksums and recovery procedures are provided in the [project report](https://github.com/nitingoyal0996/network-file-system/blob/main/Report.pdf).
 
 ![Reference Architecture](design.png)
 credits: https://mohitdtumce.medium.com/network-file-system-nfs-d0c08e191ab2
