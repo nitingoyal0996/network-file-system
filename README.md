@@ -2,12 +2,9 @@
 
 In this project implements a distributed file system in `python`. Application utilize <u>RAID5</u> architecture to enable efficient use of storage, load balancing and robust fault tolerance/recovery from single block or entire server failure using distributed parity blocks across servers and `md5` checksum.
 
-<div style="display: flex; justify-content: center; gap:10px; flex-direction: row;">
-    <div align="center" style="max-width: 20%;">
-        <img src="images/image-3.png" />
-        <p>RAID5 Parity Distribution</p>
-    </div>
-</div>
+
+![Reference Architecture](design.png)
+credits: https://mohitdtumce.medium.com/network-file-system-nfs-d0c08e191ab2
 
 More details about design of RAID5, server fail over, checksums and recovery procedures are provided in the `Report.pdf`.
 
@@ -15,7 +12,6 @@ More details about design of RAID5, server fail over, checksums and recovery pro
 
 - [Network File System](#network-file-system)
   - [Table of Contents](#table-of-contents)
-  - [Design](#design)
   - [Installation](#installation)
     - [Prerequisites](#prerequisites)
     - [Steps](#steps)
@@ -24,10 +20,6 @@ More details about design of RAID5, server fail over, checksums and recovery pro
     - [File System Clients](#file-system-clients)
     - [Working With Client CLI](#working-with-client-cli)
   - [Testing](#testing)
-
-## Design
-
-![Reference Architecture](image.png)
 
 ## Installation
 
