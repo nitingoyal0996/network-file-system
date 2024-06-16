@@ -7,10 +7,6 @@ In this project implements a distributed file system in `python`. Application ut
         <img src="images/image-3.png" />
         <p>RAID5 Parity Distribution</p>
     </div>
-    <div align="center" style="max-width: 20%;">
-        <img src="images/image-4.png" />
-        <p>Server Failure</p>
-    </div>
 </div>
 
 More details about design of RAID5, server fail over, checksums and recovery procedures are provided in the `Report.pdf`.
