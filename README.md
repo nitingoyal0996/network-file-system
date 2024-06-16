@@ -28,8 +28,6 @@ More details about design of RAID5, server fail over, checksums and recovery pro
     - [File System Clients](#file-system-clients)
     - [Working With Client CLI](#working-with-client-cli)
   - [Testing](#testing)
-  - [Results](#results)
-    - [Load distribution](#load-distribution)
 
 ## Design
 
@@ -142,12 +140,3 @@ Each of the client could perform CRUD operations on shared files.
 ## Testing
 
 The majority of the logic was graded with automated tests - using github workflow.
-
-## Results
-
-### Load distribution 
-
-<div align="center" style="max-width: 30%;">
-    <img src="images/image.png" />
-    <p>Load Distribuion</p>
-</div>
