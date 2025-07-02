@@ -1,109 +1,109 @@
-
 # Network File System
 
-In this project implements a distributed file system in `python`. Application utilize <u>RAID5</u> architecture to enable efficient use of storage, load balancing and robust fault tolerance/recovery from single block or entire server failure using distributed parity blocks across servers and `md5` checksum.
+A distributed network file system with Linux-like inode and block arrangement, RAID5-style parity distribution, data integrity through hashing, and fault tolerance with automated recovery.
+
+![Parity Distribution Block Diagram](design.png)
+
+---
+
+## Features
+
+- **Distributed Storage:** Data and parity blocks are distributed across multiple servers (RAID5 style).
+- **Linux-like Filesystem Structure:** Inode and block-based file management.
+- **Data Integrity:** Hashing for block-level integrity checks.
+- **Fault Tolerance:** Parity allows recovery from single server failures.
+- **Automated Recovery:** Failed servers can be rebuilt from parity data.
+- **Extensible CLI:** Supports common file operations and advanced block management.
+
+---
+
+## High-Level Architecture
 
 
-<div style="display: flex; justify-content: center; gap:10px; flex-direction: row;">
-    <div align="center" style="max-width: 20%;">
-        <img src="images/image-3.png" />
-        <p>RAID5 Parity Distribution</p>
-    </div>
-</div>
+### Parity Distribution Block Diagram
+
+![Generic Network File Storage Block Diagram](./images/image-3.png)
 
 
-More details about design of RAID5, server fail over, checksums and recovery procedures are provided in the [project report](https://github.com/nitingoyal0996/network-file-system/blob/main/Report.pdf).
+## UML Overview
 
-![Reference Architecture](design.png)
-credits: https://mohitdtumce.medium.com/network-file-system-nfs-d0c08e191ab2
+```mermaid
+classDiagram
+    class Client {
+        +connect()
+        +executeCommand(cmd)
+    }
+    class Server {
+        +storeBlock()
+        +retrieveBlock()
+        +repair()
+    }
+    class Inode {
+        +inodeNumber
+        +blockPointers
+    }
+    class Block {
+        +blockID
+        +data
+        +checksum
+    }
+    Client "1" -- "many" Server : connects to
+    Server "1" -- "many" Block : manages
+    Inode "1" -- "many" Block : references
+    Client <.. Inode : interacts
+```
 
-## Table of Contents
+---
 
-- [Network File System](#network-file-system)
-  - [Table of Contents](#table-of-contents)
-  - [Installation](#installation)
-    - [Prerequisites](#prerequisites)
-    - [Steps](#steps)
-  - [Usage](#usage)
-    - [Storage Servers](#storage-servers)
-    - [File System Clients](#file-system-clients)
-    - [Working With Client CLI](#working-with-client-cli)
-  - [Testing](#testing)
-
-## Installation
+## Running Instructions
 
 ### Prerequisites
 
 - Python 3.x
-- Required packages (listed in `requirements.txt`)
+- Install dependencies:
+  ```bash
+  pip install -r requirements.txt
+  ```
 
-### Steps
+### Starting Servers
 
-1. Clone the repository:
+Start each server instance (use unique ports):
 
-    ```bash
-    git clone https://github.com/nitingoyal0996/distributed-file-system.git
-    ```
+```bash
+python3 server.py -nb 256 -bs 128 -port <server_port>
+```
+*(Repeat for each server—at least 4 recommended for RAID5 demonstration)*
 
-2. Navigate to the project directory:
+### Starting Clients
 
-    ```bash
-    cd distributed-file-system
-    ```
+In a new terminal, after servers are running:
 
-3. Install the necessary dependencies:
+```bash
+python3 client.py -port 8000 -cid 0 -startport <first_server_port> -ns <num_servers> -nb <total_data_blocks>
+```
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+### Using the CLI
 
-## Usage
+Commands include:
 
-### Storage Servers
+- Basic: `cd`, `ls`, `mkdir`, `create`, `rm`, `cat`, `exit`
+- Advanced: `lnh`, `lns`, `append`, `slice`, `mirror`, `showblock`, `showinode`, `repair`, `load`, `save`
 
-To initiate servers (ensure that the server ports differ by at most 1):
+### Recovery
 
-1. Replace the start_port in the following command and run it.
+To recover a failed server, restart it and run:
+```bash
+# Use the repair command in the client CLI
+repair
+```
 
-    ```bash
-    python3 ./server.py -nb 256 -bs 128 -port <start_port>
-    ```
+---
 
-    This should start up a new file system server.
+## References
 
-### File System Clients
+- [Project Report](https://github.com/nitingoyal0996/network-file-system/blob/main/Report.pdf)
+- Credits: https://mohitdtumce.medium.com/network-file-system-nfs-d0c08e191ab2
 
-To start the file system client -
+---
 
-1. Start a new terminal
-2. Once all servers are operational, open up a new terminal and connect the clients using:
-
-    ```bash
-    python3 ./client.py -port 8000 -cid 0 -startport <start_port> -ns 4 -nb <total_data_blocks>
-    ```
-
-    Running this command should open up a new client CLI which lets you interact with the file system.
-
-### Working With Client CLI
-
-- Project contains a CLI (`shell.py`) to interact with the file system. CLI exposes multiple basic linux-like file system operations.
-
-    `cd`, `cat`, `ls`, `mkdir`, `create`, `rm`, `exit`
-- Along side more complex methods to create soft links and hard links.
-
-    `lnh`, `lns`, `append`, `slice`, `mirror`
-
-- CLI also exposes methods to debug and visualize the data available on block level
-    `showblock`, `showinode`, `showblockslice`, `showfsconfig`, `showphysicalblock`
-
-- You could also bulk load a set of data into the file system using `load` and `save` command.
-
-- If server is failed and comes back online, you could recover the data on that server using `repair` command.
-
-You can spin up a cluster of servers (up to 8) and can add potentially as many clients to connect with the servers as needed.
-
-Each of the client could perform CRUD operations on shared files.
-
-## Testing
-
-The majority of the logic was graded with automated tests - using github workflow.
+**Note:** For best results, ensure all servers and clients are started as described, and refer to the CLI help for command details.
